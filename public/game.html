@@ -3179,6 +3179,44 @@ function ambPhase5(id) {
   ambTimer = setTimeout(() => ambPhase5(id), 850 + Math.random() * 950);
 }
 
+function ambPhase6(id) {
+  if (!AC || ambPhaseId !== id) return;
+  // Escala menor harmônica — sinistra e tensa
+  const scale = [110, 130.8, 146.8, 164.8, 196, 207.7, 261.6, 207.7];
+  const freq = scale[(ambPhase6.i||0) % scale.length];
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(ambientGain);
+  if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.8; o.connect(rg); rg.connect(reverbNode); }
+  o.type = 'sawtooth'; o.frequency.value = freq;
+  const dur = 2.0;
+  g.gain.setValueAtTime(0, AC.currentTime);
+  g.gain.linearRampToValueAtTime(0.028, AC.currentTime + 0.3);
+  g.gain.linearRampToValueAtTime(0.028, AC.currentTime + dur - 0.5);
+  g.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+  o.start(); o.stop(AC.currentTime + dur + 0.1);
+  // Oitava grave para peso
+  const o2 = AC.createOscillator(), g2 = AC.createGain();
+  o2.connect(g2); g2.connect(ambientGain);
+  o2.type = 'sine'; o2.frequency.value = freq * 0.5;
+  g2.gain.setValueAtTime(0, AC.currentTime);
+  g2.gain.linearRampToValueAtTime(0.035, AC.currentTime + 0.4);
+  g2.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+  o2.start(); o2.stop(AC.currentTime + dur);
+  // Quinta diminuta dissonante a cada 3 notas
+  if ((ambPhase6.i||0) % 3 === 0) {
+    const od = AC.createOscillator(), gd = AC.createGain();
+    od.connect(gd); gd.connect(ambientGain);
+    if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.6; od.connect(rg); rg.connect(reverbNode); }
+    od.type = 'square'; od.frequency.value = freq * 1.414; // trítono
+    gd.gain.setValueAtTime(0, AC.currentTime);
+    gd.gain.linearRampToValueAtTime(0.015, AC.currentTime + 0.5);
+    gd.gain.linearRampToValueAtTime(0, AC.currentTime + dur * 0.8);
+    od.start(); od.stop(AC.currentTime + dur);
+  }
+  ambPhase6.i = (ambPhase6.i||0) + 1;
+  ambTimer = setTimeout(() => ambPhase6(id), 1200 + Math.random() * 1800);
+}
+
 // ── TELA DE INÍCIO ────────────────────────────────────────────
 function drawStartScreen() {
   // Overlay escuro
