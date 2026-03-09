@@ -619,331 +619,585 @@ function drawBG() {
     }
     ctx.lineTo(W,H); ctx.closePath(); ctx.fill(); ctx.restore();
   }
+  function drawTree(tx, baseY, height, trunkW, leafR, trunkCol, leafCol, leafCol2) {
+    ctx.fillStyle = trunkCol;
+    ctx.fillRect(tx - trunkW/2, baseY - height, trunkW, height);
+    // Raízes visíveis
+    for (let r = -1; r <= 1; r += 2) {
+      ctx.beginPath();
+      ctx.moveTo(tx, baseY);
+      ctx.quadraticCurveTo(tx + r * trunkW * 1.5, baseY + 4, tx + r * trunkW * 2.5, baseY + 8);
+      ctx.lineWidth = trunkW * 0.4;
+      ctx.strokeStyle = trunkCol;
+      ctx.stroke();
+    }
+    // Copa com múltiplas camadas
+    for (let layer = 0; layer < 3; layer++) {
+      const lr = leafR * (1 - layer * 0.22);
+      const ly = baseY - height - layer * leafR * 0.3;
+      const lx = tx + (layer - 1) * leafR * 0.15;
+      ctx.fillStyle = layer === 0 ? leafCol : leafCol2;
+      ctx.beginPath(); ctx.arc(lx, ly, lr, 0, Math.PI * 2); ctx.fill();
+    }
+  }
   const rawPh = getPhase();
   const phase = rawPh;
   const T = tick * 0.018;
 
   // ===============================================================
-  //  FASE 1 — Noite Gotica
+  //  FASE 1 — Floresta Densa Noturna (Realista)
   // ===============================================================
   if (phase === 1) {
+    // Céu noturno com gradiente realista
     const sky=ctx.createLinearGradient(0,0,0,H);
-    sky.addColorStop(0,'#06030f'); sky.addColorStop(0.45,'#130a2a'); sky.addColorStop(1,'#1a0f10');
+    sky.addColorStop(0,'#020812'); sky.addColorStop(0.3,'#0a1628'); sky.addColorStop(0.6,'#0f1f2e'); sky.addColorStop(1,'#0c1a15');
     ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
 
-    // Estrelas
-    for (let i=0; i<120; i++) {
-      const sx=d_s(i*31)*W, sy=d_s(i*31+1)*H*0.72;
-      const sa=0.4+0.6*d_s(i*31+2)+0.25*Math.sin(T*1.3+i);
-      ctx.globalAlpha=sa; ctx.fillStyle='#fff';
-      ctx.beginPath(); ctx.arc(sx,sy,d_s(i*31+3)*1.6+0.4,0,Math.PI*2); ctx.fill();
+    // Estrelas realistas com cores variadas
+    for (let i=0; i<180; i++) {
+      const sx=d_s(i*31)*W, sy=d_s(i*31+1)*H*0.55;
+      const sa=0.3+0.5*d_s(i*31+2)+0.2*Math.sin(T*0.8+i*0.7);
+      const starHue = [220,40,200,0,180][i%5];
+      const starSize = d_s(i*31+3)*1.4+0.3;
+      ctx.globalAlpha=sa;
+      ctx.fillStyle=`hsl(${starHue},${starSize>1?60:20}%,${85+d_s(i*31+4)*15}%)`;
+      ctx.beginPath(); ctx.arc(sx,sy,starSize,0,Math.PI*2); ctx.fill();
+      // Cruz de difração nas maiores
+      if (starSize > 1.2) {
+        ctx.globalAlpha = sa * 0.3;
+        ctx.fillRect(sx-4, sy-0.3, 8, 0.6);
+        ctx.fillRect(sx-0.3, sy-4, 0.6, 8);
+      }
     }
     ctx.globalAlpha=1;
 
-    // Lua com halo
-    const moonX=W*0.15+(-camX)*0.008, moonY=H*0.18;
+    // Lua crescente detalhada
+    const moonX=W*0.82+(-camX)*0.005, moonY=H*0.14;
+    // Halo atmosférico
     ctx.save(); ctx.globalCompositeOperation='screen';
-    const mHalo=ctx.createRadialGradient(moonX,moonY,18,moonX,moonY,90);
-    mHalo.addColorStop(0,'rgba(220,210,170,0.30)'); mHalo.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=mHalo; ctx.beginPath(); ctx.arc(moonX,moonY,90,0,Math.PI*2); ctx.fill();
+    for (let h=0; h<3; h++) {
+      const mHalo=ctx.createRadialGradient(moonX,moonY,8+h*5,moonX,moonY,60+h*40);
+      mHalo.addColorStop(0,`rgba(200,210,180,${0.12-h*0.03})`); mHalo.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=mHalo; ctx.beginPath(); ctx.arc(moonX,moonY,60+h*40,0,Math.PI*2); ctx.fill();
+    }
     ctx.restore();
-    ctx.fillStyle='#d8cc99'; ctx.beginPath(); ctx.arc(moonX,moonY,22,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle='#c0b880'; ctx.beginPath(); ctx.arc(moonX+6,moonY-4,16,0,Math.PI*2); ctx.fill();
+    // Lua com textura
+    ctx.fillStyle='#e8e0c8'; ctx.beginPath(); ctx.arc(moonX,moonY,18,0,Math.PI*2); ctx.fill();
+    // Crateras sutis
+    ctx.fillStyle='rgba(180,170,140,0.4)';
+    ctx.beginPath(); ctx.arc(moonX-5,moonY-3,5,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(moonX+4,moonY+5,3,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(moonX-2,moonY+7,2.5,0,Math.PI*2); ctx.fill();
+    // Sombra crescente
+    ctx.fillStyle='#0a1628'; ctx.beginPath(); ctx.arc(moonX+8,moonY-2,15,0,Math.PI*2); ctx.fill();
 
-    // Nuvens tempestuosas
-    ctx.save(); ctx.globalAlpha=0.75;
-    for (let i=0; i<8; i++) {
-      const csx=((d_s(i*19)*2800+(-camX)*0.12+T*18)%2800)-400;
-      if (csx<-200||csx>W+200) continue;
-      const csy=40+d_s(i*19+1)*80, cr=70+d_s(i*19+2)*50;
-      const cg=ctx.createRadialGradient(csx,csy,0,csx,csy,cr);
-      cg.addColorStop(0,'rgba(35,20,55,0.9)'); cg.addColorStop(1,'rgba(10,5,20,0)');
-      ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(csx,csy,cr,0,Math.PI*2); ctx.fill();
+    // Nuvens finas realistas
+    ctx.save();
+    for (let i=0; i<6; i++) {
+      const csx=((d_s(i*19)*3000+(-camX)*0.008+T*6)%3000)-600;
+      if (csx<-300||csx>W+300) continue;
+      const csy=30+d_s(i*19+1)*60;
+      ctx.globalAlpha=0.08+d_s(i*19+2)*0.06;
+      const cw = 200+d_s(i*19+3)*200;
+      const cg=ctx.createRadialGradient(csx,csy,0,csx,csy,cw*0.3);
+      cg.addColorStop(0,'rgba(60,70,90,1)'); cg.addColorStop(1,'rgba(20,30,50,0)');
+      ctx.fillStyle=cg;
+      ctx.beginPath(); ctx.ellipse(csx,csy,cw*0.5,20+d_s(i*19+4)*15,0,0,Math.PI*2); ctx.fill();
     }
     ctx.restore();
 
-    // Montanhas distantes (parallax)
-    const off1=(-camX)*0.022;
-    mtn(off1, H*0.48, 0.00012, 0, '#0e071a', 0.92);
-    mtn(off1*1.4, H*0.55, 0.00018, 0, '#120d20', 0.85);
-
-    // Castelo gotico
-    const castX=W*0.5+(-camX)*0.04, castY=H*0.72;
-    ctx.fillStyle='#09040f';
-    ctx.fillRect(castX-14,castY-110,28,110);
-    for (let b=-3; b<=3; b++) ctx.fillRect(castX+b*9-4,castY-118,7,14);
-    for (const [tx,ty] of [[-55,70],[-35,50],[35,50],[55,70]]) {
-      ctx.fillRect(castX+tx-8,castY-ty,16,ty);
-      for (let b=-1; b<=1; b++) ctx.fillRect(castX+tx+b*8-3,castY-ty-8,6,10);
+    // Montanhas distantes com neve nos picos
+    const off1=(-camX)*0.015;
+    mtn(off1, H*0.42, 0.00010, 0, '#0a1520', 0.95);
+    // Neve nos picos
+    ctx.save(); ctx.globalAlpha=0.15;
+    const steps1=Math.ceil(W/4)+2;
+    ctx.fillStyle='#8090a0';
+    ctx.beginPath(); ctx.moveTo(0,H);
+    for (let i=0; i<=steps1; i++) {
+      const sx=i*(W/steps1), wx=(off1+sx)*0.00010;
+      const y=H*0.42+Math.sin(wx*0.73)*48*0.00010+Math.sin(wx*1.31)*28*0.00010+Math.sin(wx*2.57)*14*0.00010+Math.sin(wx*0.18)*72*0.00010;
+      ctx.lineTo(sx,y-3);
     }
-    ctx.beginPath(); ctx.arc(castX,castY-14,12,Math.PI,0); ctx.fill();
-    ctx.fillRect(castX-12,castY-14,24,14);
-    ctx.save(); ctx.globalCompositeOperation='screen';
-    for (const [wx,wy] of [[castX-6,castY-72],[castX+6,castY-72],[castX-6,castY-50],[castX+6,castY-50]]) {
-      const wg=ctx.createRadialGradient(wx,wy,0,wx,wy,12);
-      wg.addColorStop(0,'rgba(255,210,60,0.7)'); wg.addColorStop(1,'rgba(255,120,0,0)');
-      ctx.fillStyle=wg; ctx.beginPath(); ctx.arc(wx,wy,12,0,Math.PI*2); ctx.fill();
+    for (let i=steps1; i>=0; i--) {
+      const sx=i*(W/steps1), wx=(off1+sx)*0.00010;
+      const y=H*0.42+Math.sin(wx*0.73)*48*0.00010+Math.sin(wx*1.31)*28*0.00010+Math.sin(wx*2.57)*14*0.00010+Math.sin(wx*0.18)*72*0.00010;
+      ctx.lineTo(sx,y+8);
     }
-    ctx.restore();
+    ctx.closePath(); ctx.fill(); ctx.restore();
 
-    // Floresta de arvores mortas
-    const off2=(-camX)*0.055;
-    ctx.fillStyle='#0b0614';
-    for (let i=0; i<22; i++) {
+    mtn(off1*1.6, H*0.50, 0.00015, 0, '#0d1c28', 0.90);
+
+    // Floresta densa camada traseira
+    const off2=(-camX)*0.035;
+    for (let i=0; i<30; i++) {
       const tx=((d_s(i*41)*28000+off2)%28000)/28000*W;
-      if (tx<-10||tx>W+10) continue;
-      const th=60+d_s(i*41+1)*80;
-      ctx.fillRect(tx-3,H-th,6,th);
-      for (let b=0; b<3; b++) {
-        const by2=H-th*(0.5+b*0.18);
-        const blen=(18+d_s(i*41+b+2)*22)*(b%2?1:-1);
-        ctx.save();
-        ctx.strokeStyle='#0b0614'; ctx.lineWidth=2;
-        ctx.beginPath(); ctx.moveTo(tx,by2); ctx.lineTo(tx+blen,by2-12-b*4); ctx.stroke();
-        ctx.restore();
+      if (tx<-40||tx>W+40) continue;
+      const th=50+d_s(i*41+1)*70;
+      const shade = 8+d_s(i*41+2)*8;
+      drawTree(tx, H*0.82, th, 4, 18+d_s(i*41+3)*12,
+        `rgb(${shade},${shade+5},${shade})`,
+        `rgb(${shade+3},${shade+12},${shade+2})`,
+        `rgb(${shade+1},${shade+8},${shade})`);
+    }
+
+    // Floresta média
+    const off3=(-camX)*0.06;
+    for (let i=0; i<20; i++) {
+      const tx=((d_s(i*47)*28000+off3)%28000)/28000*W;
+      if (tx<-50||tx>W+50) continue;
+      const th=70+d_s(i*47+1)*90;
+      const shade = 5+d_s(i*47+2)*6;
+      // Pinheiros (triângulos empilhados)
+      ctx.fillStyle=`rgb(${shade},${shade+3},${shade})`;
+      ctx.fillRect(tx-3, H*0.86-th, 6, th);
+      for (let layer=0; layer<4; layer++) {
+        const ly = H*0.86 - th + layer*(th*0.22);
+        const lw = 12 + layer*8 + d_s(i*47+layer)*6;
+        ctx.beginPath(); ctx.moveTo(tx-lw, ly+th*0.28); ctx.lineTo(tx, ly); ctx.lineTo(tx+lw, ly+th*0.28); ctx.closePath(); ctx.fill();
       }
     }
 
-    // Nevoa do chao
-    const fog=ctx.createLinearGradient(0,H*0.78,0,H);
-    fog.addColorStop(0,'rgba(0,0,0,0)'); fog.addColorStop(1,'rgba(18,8,30,0.78)');
-    ctx.fillStyle=fog; ctx.fillRect(0,H*0.78,W,H*0.22);
-
-    // Morcegos
-    for (let i=0; i<6; i++) {
-      const bx=(T*35*(1+i*0.3)+d_s(i*7)*W*2)%(W*2)-W*0.5;
-      const by2=H*0.12+d_s(i*7+1)*H*0.28+Math.sin(T*1.1+i*2.1)*18;
-      const bflap=Math.sin(T*4.5+i*1.8);
-      ctx.save(); ctx.fillStyle='#1a0a28';
-      ctx.beginPath();
-      ctx.moveTo(bx,by2);
-      ctx.quadraticCurveTo(bx-18,by2-12*bflap,bx-28,by2+4);
-      ctx.quadraticCurveTo(bx-12,by2+6,bx,by2+2);
-      ctx.quadraticCurveTo(bx+12,by2+6,bx+28,by2+4);
-      ctx.quadraticCurveTo(bx+18,by2-12*bflap,bx,by2);
-      ctx.fill(); ctx.restore();
+    // Névoa rasteira com camadas
+    for (let f=0; f<3; f++) {
+      const fogY = H*0.72 + f*H*0.06;
+      const fogA = 0.08 - f*0.02;
+      ctx.save(); ctx.globalAlpha = fogA + 0.03*Math.sin(T*0.3+f);
+      const fog=ctx.createLinearGradient(0,fogY,0,fogY+H*0.12);
+      fog.addColorStop(0,'rgba(0,0,0,0)'); fog.addColorStop(0.5,'rgba(30,45,40,1)'); fog.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=fog; ctx.fillRect(0,fogY,W,H*0.12);
+      ctx.restore();
     }
+
+    // Vagalumes ambiente (não o jogador)
+    for (let i=0; i<15; i++) {
+      const fx = d_s(i*67)*W;
+      const fy = H*0.3+d_s(i*67+1)*H*0.5;
+      const fglow = 0.2+0.3*Math.sin(T*1.2+i*2.3)+0.2*Math.sin(T*0.5+i*4.1);
+      if (fglow < 0.15) continue;
+      ctx.save(); ctx.globalCompositeOperation='screen';
+      const fg=ctx.createRadialGradient(fx,fy,0,fx,fy,12);
+      fg.addColorStop(0,`rgba(160,220,40,${fglow*0.6})`); fg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=fg; ctx.beginPath(); ctx.arc(fx,fy,12,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle=`rgba(200,255,60,${fglow})`;
+      ctx.beginPath(); ctx.arc(fx,fy,1.5,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    // Solo/chão de floresta
+    const ground=ctx.createLinearGradient(0,H*0.84,0,H);
+    ground.addColorStop(0,'rgba(0,0,0,0)'); ground.addColorStop(0.3,'rgba(10,18,12,0.9)'); ground.addColorStop(1,'rgba(8,14,10,0.95)');
+    ctx.fillStyle=ground; ctx.fillRect(0,H*0.84,W,H*0.16);
   }
 
   // ===============================================================
-  //  FASE 2 — Fundo do Mar
+  //  FASE 2 — Oceano Profundo (Realista)
   // ===============================================================
   else if (phase === 2) {
     const sky=ctx.createLinearGradient(0,0,0,H);
-    sky.addColorStop(0,'#001830'); sky.addColorStop(0.4,'#002848'); sky.addColorStop(1,'#003060');
+    sky.addColorStop(0,'#001420'); sky.addColorStop(0.2,'#002038'); sky.addColorStop(0.5,'#003050'); sky.addColorStop(0.8,'#002040'); sky.addColorStop(1,'#001830');
     ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
 
-    // Raios de luz da superficie
+    // Raios de luz cáustica (ondulantes)
     ctx.save(); ctx.globalCompositeOperation='screen';
-    for (let i=0; i<8; i++) {
-      const rx=W*0.08+i*(W*0.115)+Math.sin(T*0.4+i)*22;
-      const ra=0.07+0.05*Math.sin(T*0.6+i*1.3);
-      const rg=ctx.createLinearGradient(rx,0,rx+30,H);
-      rg.addColorStop(0,`rgba(80,180,220,${ra})`);
-      rg.addColorStop(1,'rgba(0,80,140,0)');
-      ctx.fillStyle=rg;
-      ctx.beginPath(); ctx.moveTo(rx-20,0); ctx.lineTo(rx+20,0); ctx.lineTo(rx+60,H); ctx.lineTo(rx+20,H); ctx.closePath(); ctx.fill();
+    for (let i=0; i<12; i++) {
+      const rx=W*0.05+i*(W*0.082)+Math.sin(T*0.3+i*0.8)*30+Math.cos(T*0.5+i*1.2)*15;
+      const rw=18+Math.sin(T*0.4+i*1.5)*8;
+      const ra=0.04+0.03*Math.sin(T*0.5+i*1.1);
+      ctx.fillStyle=`rgba(40,160,200,${ra})`;
+      ctx.beginPath();
+      ctx.moveTo(rx-rw,0); ctx.lineTo(rx+rw,0);
+      ctx.lineTo(rx+rw*1.8+Math.sin(T*0.2+i)*20,H);
+      ctx.lineTo(rx-rw*0.2+Math.sin(T*0.3+i+1)*20,H);
+      ctx.closePath(); ctx.fill();
     }
     ctx.restore();
 
-    // Penhascos subaquaticos (parallax)
-    const off1=(-camX)*0.018;
-    mtn(off1, H*0.55, 0.00014, 0, '#001425', 0.9);
-    mtn(off1*1.5, H*0.62, 0.00020, 0, '#001c30', 0.85);
+    // Parede de rocha submarina (parallax distante)
+    const off1=(-camX)*0.012;
+    ctx.fillStyle='#0a1e28';
+    const rockSteps=60;
+    ctx.beginPath(); ctx.moveTo(0,H);
+    for (let i=0; i<=rockSteps; i++) {
+      const sx=i*(W/rockSteps), wx=(off1+sx)*0.003;
+      const y=H*0.40+Math.sin(wx*2.1)*30+Math.sin(wx*5.3)*15+Math.cos(wx*0.7)*45;
+      ctx.lineTo(sx,y);
+    }
+    ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
+    // Textura de rocha
+    ctx.save(); ctx.globalAlpha=0.15;
+    for (let i=0; i<40; i++) {
+      const rx=d_s(i*37)*W, ry=H*0.45+d_s(i*37+1)*H*0.3;
+      ctx.fillStyle=d_s(i*37+2)>0.5?'#0e2430':'#061820';
+      ctx.beginPath(); ctx.ellipse(rx,ry,8+d_s(i*37+3)*20,4+d_s(i*37+4)*8,d_s(i*37+5)*3,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
 
-    // Corais
-    const off2=(-camX)*0.065;
-    for (let i=0; i<14; i++) {
+    // Corais realistas
+    const off2=(-camX)*0.06;
+    for (let i=0; i<16; i++) {
       const cx=((d_s(i*29)*28000+off2)%28000)/28000*W;
-      if (cx<-20||cx>W+20) continue;
-      const ch=40+d_s(i*29+1)*60;
-      const ctype=Math.floor(d_s(i*29+2)*3);
-      ctx.fillStyle=`hsl(${[350,15,330][ctype]},70%,35%)`;
-      if (ctype===0) {
-        ctx.fillRect(cx-4,H-ch,8,ch);
-        ctx.fillRect(cx-14,H-ch*0.65,10,ch*0.35);
-        ctx.fillRect(cx+4,H-ch*0.55,10,ch*0.25);
-      } else if (ctype===1) {
-        for (let b=0; b<5; b++) {
-          const bx=cx+Math.sin(b*0.7)*18;
-          ctx.fillRect(bx-2,H-ch*(0.3+b*0.15),4,ch*(0.3+b*0.15));
-        }
-      } else {
-        ctx.beginPath(); ctx.ellipse(cx,H-ch,22,12,0,0,Math.PI*2); ctx.fill();
-        ctx.fillRect(cx-5,H-ch,10,ch);
+      if (cx<-30||cx>W+30) continue;
+      const ch=35+d_s(i*29+1)*55;
+      const coralHue=[350,20,310,5,340][i%5];
+      const coralSat=55+d_s(i*29+2)*25;
+      const coralLight=28+d_s(i*29+3)*15;
+      ctx.fillStyle=`hsl(${coralHue},${coralSat}%,${coralLight}%)`;
+      // Coral ramificado
+      for (let b=0; b<5+Math.floor(d_s(i*29+4)*4); b++) {
+        const bAngle = -Math.PI/2 + (b-2)*0.35 + Math.sin(T*0.3+i)*0.05;
+        const bLen = ch*(0.4+d_s(i*29+b+5)*0.6);
+        const bx2 = cx + Math.cos(bAngle)*bLen;
+        const by2 = H + Math.sin(bAngle)*bLen;
+        ctx.lineWidth = 3+d_s(i*29+b+10)*3;
+        ctx.strokeStyle=`hsl(${coralHue},${coralSat}%,${coralLight+5}%)`;
+        ctx.beginPath(); ctx.moveTo(cx, H);
+        ctx.quadraticCurveTo(cx+(bx2-cx)*0.5+d_s(i*29+b+15)*10, (H+by2)*0.5-5, bx2, by2);
+        ctx.stroke();
+        // Pontas
+        ctx.fillStyle=`hsl(${coralHue},${coralSat+10}%,${coralLight+12}%)`;
+        ctx.beginPath(); ctx.arc(bx2,by2,2+d_s(i*29+b+20)*2,0,Math.PI*2); ctx.fill();
       }
     }
 
-    // Algas marinhas (kelp)
-    const off3=(-camX)*0.08;
-    for (let i=0; i<18; i++) {
+    // Algas ondulantes realistas
+    const off3=(-camX)*0.075;
+    for (let i=0; i<22; i++) {
       const kx=((d_s(i*53)*28000+off3)%28000)/28000*W;
       if (kx<-5||kx>W+5) continue;
-      const kh=70+d_s(i*53+1)*100;
-      const ksway=Math.sin(T*0.9+i*1.4)*14;
-      ctx.strokeStyle=`rgba(20,${100+Math.floor(d_s(i*53+2)*60)},40,0.85)`;
-      ctx.lineWidth=3+d_s(i*53+3)*2;
+      const kh=60+d_s(i*53+1)*90;
+      const kHue = 100+d_s(i*53+2)*40;
+      ctx.strokeStyle=`hsla(${kHue},60%,25%,0.85)`;
+      ctx.lineWidth=2+d_s(i*53+3)*2;
       ctx.beginPath(); ctx.moveTo(kx,H);
-      for (let s=1; s<=6; s++) {
-        const ky=H-kh*s/6;
-        ctx.quadraticCurveTo(kx+ksway*(s%2?1:-1),ky+kh/12,kx+ksway*0.6*(s%2?1:-1),ky);
+      const segments=8;
+      for (let s=1; s<=segments; s++) {
+        const ky=H-kh*s/segments;
+        const sway=Math.sin(T*0.7+i*1.4+s*0.5)*12*(s/segments);
+        ctx.quadraticCurveTo(kx+sway*1.3,ky+kh/segments*0.5,kx+sway,ky);
       }
       ctx.stroke();
+      // Folhas laterais
+      for (let l=1; l<4; l++) {
+        const ly = H - kh*l/4;
+        const lsway = Math.sin(T*0.7+i*1.4+l*0.5)*12*(l/4);
+        ctx.fillStyle=`hsla(${kHue},55%,22%,0.7)`;
+        ctx.beginPath();
+        ctx.ellipse(kx+lsway+(l%2?8:-8), ly, 6, 2, (l%2?0.3:-0.3), 0, Math.PI*2);
+        ctx.fill();
+      }
     }
 
-    // Bolhas
-    for (let i=0; i<30; i++) {
-      const bphase=(T*0.6+d_s(i*17)*10)%10;
-      const bx=d_s(i*17+1)*W+Math.sin(T+i)*8;
-      const by=H-(bphase/10)*H*1.1;
+    // Peixes pequenos em cardume
+    ctx.save();
+    for (let school=0; school<3; school++) {
+      const sx0 = (d_s(school*99)*W*2 + T*30*(1+school*0.4))%(W*2) - W*0.3;
+      const sy0 = H*0.25+d_s(school*99+1)*H*0.35;
+      const fishCol = [`rgba(180,200,220,0.5)`,`rgba(120,180,200,0.4)`,`rgba(200,180,140,0.45)`][school];
+      ctx.fillStyle = fishCol;
+      for (let f=0; f<8+school*3; f++) {
+        const fx = sx0 + d_s(school*99+f*3+2)*60 + Math.sin(T*2+f)*5;
+        const fy = sy0 + d_s(school*99+f*3+3)*30 + Math.cos(T*1.5+f*0.8)*4;
+        if (fx<-10||fx>W+10) continue;
+        ctx.beginPath();
+        ctx.moveTo(fx+6,fy); ctx.lineTo(fx-4,fy-2); ctx.lineTo(fx-4,fy+2); ctx.closePath(); ctx.fill();
+        // Cauda
+        ctx.beginPath(); ctx.moveTo(fx-4,fy); ctx.lineTo(fx-8,fy-2.5); ctx.lineTo(fx-8,fy+2.5); ctx.closePath(); ctx.fill();
+      }
+    }
+    ctx.restore();
+
+    // Bolhas realistas
+    for (let i=0; i<35; i++) {
+      const bphase=(T*0.5+d_s(i*17)*12)%12;
+      const bx=d_s(i*17+1)*W+Math.sin(T*0.7+i)*10+Math.cos(T*1.1+i*0.7)*5;
+      const by=H-(bphase/12)*H*1.15;
       if (by<-10||by>H+10) continue;
-      ctx.save(); ctx.globalAlpha=0.45+d_s(i*17+3)*0.3;
-      ctx.strokeStyle='rgba(150,220,255,0.8)'; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.arc(bx,by,2+d_s(i*17+2)*5,0,Math.PI*2); ctx.stroke();
+      const br=1.5+d_s(i*17+2)*4;
+      ctx.save();
+      ctx.globalAlpha=0.3+d_s(i*17+3)*0.25;
+      // Borda
+      ctx.strokeStyle='rgba(120,200,230,0.6)'; ctx.lineWidth=0.8;
+      ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2); ctx.stroke();
+      // Reflexo especular
+      ctx.fillStyle='rgba(200,240,255,0.5)';
+      ctx.beginPath(); ctx.arc(bx-br*0.3,by-br*0.3,br*0.25,0,Math.PI*2); ctx.fill();
       ctx.restore();
     }
 
+    // Partículas de sedimento
+    for (let i=0; i<20; i++) {
+      const px2=d_s(i*71)*W, py2=d_s(i*71+1)*H;
+      const pa = 0.1+0.08*Math.sin(T*0.4+i*1.7);
+      ctx.fillStyle=`rgba(100,140,160,${pa})`;
+      ctx.beginPath(); ctx.arc(px2+Math.sin(T*0.2+i)*3, py2, 0.8+d_s(i*71+2)*1.2, 0, Math.PI*2); ctx.fill();
+    }
   }
 
   // ===============================================================
-  //  FASE 3 — Tempestade Eletrica / Cidade
+  //  FASE 3 — Cidade na Tempestade (Realista)
   // ===============================================================
   else if (phase === 3) {
     const sky=ctx.createLinearGradient(0,0,0,H);
-    sky.addColorStop(0,'#050914'); sky.addColorStop(0.5,'#0c1828'); sky.addColorStop(0.85,'#12202e'); sky.addColorStop(1,'#0e1a10');
+    sky.addColorStop(0,'#080c14'); sky.addColorStop(0.35,'#101822'); sky.addColorStop(0.65,'#18222e'); sky.addColorStop(0.85,'#1a2428'); sky.addColorStop(1,'#141c1a');
     ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
 
-    // Brilho de horizonte urbano
-    const hGlow=ctx.createLinearGradient(0,H*0.55,0,H*0.75);
-    hGlow.addColorStop(0,'rgba(255,160,40,0.18)'); hGlow.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=hGlow; ctx.fillRect(0,H*0.55,W,H*0.20);
-
-    // Nuvens de tempestade
-    for (let i=0; i<10; i++) {
-      const csx=(d_s(i*23)*W*3+T*22*(1+d_s(i*23+1)*0.8))%(W*3)-W;
-      if (csx<-250||csx>W+250) continue;
-      const csy=20+d_s(i*23+2)*90, cr=90+d_s(i*23+3)*70;
-      const cg=ctx.createRadialGradient(csx,csy,0,csx,csy,cr);
-      cg.addColorStop(0,`rgba(14,20,36,${0.55+d_s(i*23+4)*0.3})`); cg.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(csx,csy,cr,0,Math.PI*2); ctx.fill();
-    }
-
-    // Skyline distante
-    const off1=(-camX)*0.025;
-    ctx.fillStyle='#0a111e';
-    for (let i=0; i<28; i++) {
-      const bx=((d_s(i*37)*28000+off1)%28000)/28000*W;
-      if (bx<-30||bx>W+30) continue;
-      ctx.fillRect(bx-(14+d_s(i*37+1)*24)/2,H-H*0.32-(30+d_s(i*37+2)*70),14+d_s(i*37+1)*24,30+d_s(i*37+2)*70);
-    }
-
-    // Edificios medios com janelas iluminadas
-    const off2=(-camX)*0.065;
-    ctx.fillStyle='#070d18';
-    for (let i=0; i<18; i++) {
-      const bx=((d_s(i*43)*28000+off2)%28000)/28000*W;
-      if (bx<-40||bx>W+40) continue;
-      const bw=22+d_s(i*43+1)*32, bh=55+d_s(i*43+2)*100;
-      ctx.fillRect(bx-bw/2,H-H*0.22-bh,bw,bh);
-      ctx.save(); ctx.globalCompositeOperation='screen';
-      for (let wr=0; wr<4; wr++) {
-        for (let wc=0; wc<Math.floor(bw/10); wc++) {
-          if (d_s(i*43+wr*10+wc+5)<0.45) continue;
-          const wx2=bx-bw/2+wc*10+3, wy2=H-H*0.22-bh+wr*18+8;
-          const wg=ctx.createRadialGradient(wx2,wy2,0,wx2,wy2,8);
-          wg.addColorStop(0,`rgba(255,${180+d_s(i*43+wr+wc)*60|0},60,${0.4+d_s(i*43+wr+wc+6)*0.4})`);
-          wg.addColorStop(1,'rgba(0,0,0,0)');
-          ctx.fillStyle=wg; ctx.beginPath(); ctx.arc(wx2,wy2,8,0,Math.PI*2); ctx.fill();
+    // Nuvens de tempestade realistas (volumétricas)
+    for (let layer=0; layer<2; layer++) {
+      ctx.save();
+      for (let i=0; i<12; i++) {
+        const csx=(d_s(i*23+layer*50)*W*3+T*(8+layer*4)*(1+d_s(i*23+1)*0.5))%(W*3)-W*0.5;
+        if (csx<-250||csx>W+250) continue;
+        const csy=10+layer*30+d_s(i*23+2+layer)*60;
+        const cw=120+d_s(i*23+3)*100;
+        const ch2=30+d_s(i*23+4)*25;
+        ctx.globalAlpha=0.3-layer*0.1;
+        // Múltiplos blobs por nuvem
+        for (let b=0; b<4; b++) {
+          const bx2=csx+d_s(i*23+b+5)*cw-cw*0.5;
+          const by2=csy+d_s(i*23+b+9)*ch2*0.5;
+          const br=25+d_s(i*23+b+13)*30;
+          const cg=ctx.createRadialGradient(bx2,by2,br*0.1,bx2,by2,br);
+          cg.addColorStop(0,`rgba(20,25,35,0.8)`); cg.addColorStop(1,'rgba(12,16,24,0)');
+          ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(bx2,by2,br,0,Math.PI*2); ctx.fill();
         }
       }
       ctx.restore();
     }
 
-    // Chuva diagonal
-    ctx.save(); ctx.globalAlpha=0.35; ctx.strokeStyle='rgba(160,200,255,0.7)'; ctx.lineWidth=1;
-    for (let i=0; i<80; i++) {
-      const rx=((d_s(i*11)*W*1.5+T*120)%(W*1.5))-W*0.25;
-      const ry=((d_s(i*11+1)*H*1.5+T*200)%(H*1.5))-H*0.25;
-      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx+6,ry+14); ctx.stroke();
+    // Reflexo de poluição luminosa no horizonte
+    const hGlow=ctx.createLinearGradient(0,H*0.50,0,H*0.70);
+    hGlow.addColorStop(0,'rgba(255,140,30,0.12)'); hGlow.addColorStop(0.5,'rgba(255,100,20,0.06)'); hGlow.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=hGlow; ctx.fillRect(0,H*0.50,W,H*0.20);
+
+    // Skyline distante detalhado
+    const off1=(-camX)*0.018;
+    ctx.fillStyle='#0c1420';
+    for (let i=0; i<35; i++) {
+      const bx=((d_s(i*37)*28000+off1)%28000)/28000*W;
+      if (bx<-30||bx>W+30) continue;
+      const bw=10+d_s(i*37+1)*28;
+      const bh=25+d_s(i*37+2)*80;
+      const by2=H*0.60-bh;
+      ctx.fillRect(bx-bw/2,by2,bw,bh+H*0.40);
+      // Antena no topo de alguns
+      if (d_s(i*37+3)>0.7) {
+        ctx.fillRect(bx-1, by2-12-d_s(i*37+4)*20, 2, 12+d_s(i*37+4)*20);
+        // Luz vermelha piscante
+        if (Math.sin(T*2+i)>0.3) {
+          ctx.save(); ctx.globalCompositeOperation='screen';
+          ctx.fillStyle='rgba(255,20,20,0.8)';
+          ctx.beginPath(); ctx.arc(bx, by2-12-d_s(i*37+4)*20, 2, 0, Math.PI*2); ctx.fill();
+          ctx.restore();
+        }
+      }
+    }
+
+    // Edifícios médios com janelas
+    const off2=(-camX)*0.05;
+    for (let i=0; i<20; i++) {
+      const bx=((d_s(i*43)*28000+off2)%28000)/28000*W;
+      if (bx<-50||bx>W+50) continue;
+      const bw=20+d_s(i*43+1)*35, bh=50+d_s(i*43+2)*110;
+      const by2=H*0.78-bh;
+      // Corpo do edifício
+      ctx.fillStyle=`rgb(${12+d_s(i*43+3)*8|0},${16+d_s(i*43+4)*8|0},${22+d_s(i*43+5)*8|0})`;
+      ctx.fillRect(bx-bw/2,by2,bw,bh+H*0.22);
+      // Janelas em grade
+      const winW=4, winH=5, winGapX=8, winGapY=10;
+      const cols=Math.floor((bw-6)/winGapX);
+      const rows=Math.floor((bh-8)/winGapY);
+      for (let wr=0; wr<rows; wr++) {
+        for (let wc=0; wc<cols; wc++) {
+          const wx2=bx-bw/2+4+wc*winGapX;
+          const wy2=by2+6+wr*winGapY;
+          const lit = d_s(i*43+wr*10+wc+5) > 0.55;
+          if (lit) {
+            // Luz amarela/branca da janela
+            const warmth = d_s(i*43+wr+wc+20);
+            ctx.fillStyle=`rgba(255,${200+warmth*55|0},${120+warmth*80|0},${0.5+warmth*0.3})`;
+            ctx.fillRect(wx2,wy2,winW,winH);
+            // Glow
+            ctx.save(); ctx.globalCompositeOperation='screen';
+            const wg=ctx.createRadialGradient(wx2+winW/2,wy2+winH/2,0,wx2+winW/2,wy2+winH/2,10);
+            wg.addColorStop(0,`rgba(255,${210+warmth*40|0},${100+warmth*60|0},0.12)`);
+            wg.addColorStop(1,'rgba(0,0,0,0)');
+            ctx.fillStyle=wg; ctx.fillRect(wx2-6,wy2-6,winW+12,winH+12);
+            ctx.restore();
+          } else {
+            ctx.fillStyle='rgba(20,25,35,0.8)';
+            ctx.fillRect(wx2,wy2,winW,winH);
+          }
+        }
+      }
+    }
+
+    // Postes de luz
+    const off5=(-camX)*0.09;
+    for (let i=0; i<8; i++) {
+      const lx=((d_s(i*61)*28000+off5)%28000)/28000*W;
+      if (lx<-20||lx>W+20) continue;
+      ctx.fillStyle='#1a1e24';
+      ctx.fillRect(lx-2,H*0.78,4,H*0.22);
+      ctx.fillRect(lx-8,H*0.78,16,3);
+      // Luz do poste
+      ctx.save(); ctx.globalCompositeOperation='screen';
+      const lg=ctx.createRadialGradient(lx,H*0.79,0,lx,H*0.79,50);
+      lg.addColorStop(0,'rgba(255,200,100,0.25)'); lg.addColorStop(0.5,'rgba(255,160,60,0.08)'); lg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=lg; ctx.beginPath(); ctx.arc(lx,H*0.79,50,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    // Chuva diagonal realista
+    ctx.save();
+    for (let i=0; i<120; i++) {
+      const rx=((d_s(i*11)*W*1.5+T*140)%(W*1.5))-W*0.25;
+      const ry=((d_s(i*11+1)*H*1.5+T*220)%(H*1.5))-H*0.25;
+      const rlen=8+d_s(i*11+2)*10;
+      ctx.globalAlpha=0.15+d_s(i*11+3)*0.2;
+      ctx.strokeStyle='rgba(180,210,240,0.7)'; ctx.lineWidth=0.8;
+      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx+4,ry+rlen); ctx.stroke();
     }
     ctx.restore();
 
-    // Relampago ocasional
-    if (Math.sin(T*3.1)*Math.sin(T*7.3)>0.82) {
+    // Relâmpago realista
+    if (Math.sin(T*3.1)*Math.sin(T*7.3)>0.84) {
       ctx.save(); ctx.globalCompositeOperation='screen';
-      ctx.fillStyle='rgba(180,220,255,0.15)'; ctx.fillRect(0,0,W,H);
-      let lx=W*0.3+Math.sin(T*5)*W*0.4, ly=0;
-      ctx.strokeStyle='rgba(200,230,255,0.9)'; ctx.lineWidth=2;
+      // Flash no céu
+      ctx.fillStyle='rgba(200,220,255,0.08)'; ctx.fillRect(0,0,W,H);
+      // Raio com ramificações
+      let lx=W*0.25+Math.sin(T*5)*W*0.5, ly=0;
+      ctx.strokeStyle='rgba(220,240,255,0.9)'; ctx.lineWidth=2.5;
+      ctx.shadowColor='rgba(150,200,255,0.8)'; ctx.shadowBlur=15;
       ctx.beginPath(); ctx.moveTo(lx,ly);
-      for (let s=0; s<8; s++) { lx+=(d_s(s*17+99)-0.5)*30; ly+=H/8; ctx.lineTo(lx,ly); }
-      ctx.stroke(); ctx.restore();
+      for (let s=0; s<10; s++) {
+        lx+=(d_s(s*17+99)-0.5)*40; ly+=H/10;
+        ctx.lineTo(lx,ly);
+        // Ramificação
+        if (d_s(s*17+200)>0.6) {
+          ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(lx,ly);
+          let bx2=lx, by2=ly;
+          ctx.strokeStyle='rgba(200,230,255,0.5)'; ctx.lineWidth=1;
+          for (let b=0; b<3; b++) { bx2+=(d_s(s*17+b+300)-0.4)*35; by2+=H/20; ctx.lineTo(bx2,by2); }
+          ctx.stroke();
+          ctx.strokeStyle='rgba(220,240,255,0.9)'; ctx.lineWidth=2.5;
+          ctx.beginPath(); ctx.moveTo(lx,ly);
+        }
+      }
+      ctx.stroke();
+      ctx.shadowBlur=0; ctx.restore();
     }
 
+    // Reflexos no chão molhado
+    ctx.save(); ctx.globalAlpha=0.06;
+    ctx.scale(1,-1); ctx.translate(0,-H*2+H*0.44);
+    // Re-desenha silhueta invertida dos prédios
+    const offR=(-camX)*0.05;
+    for (let i=0; i<10; i++) {
+      const bx=((d_s(i*43)*28000+offR)%28000)/28000*W;
+      if (bx<-50||bx>W+50) continue;
+      const bw=20+d_s(i*43+1)*35, bh=50+d_s(i*43+2)*110;
+      ctx.fillStyle='rgba(255,200,100,0.3)';
+      ctx.fillRect(bx-bw/2,H*0.78-bh,bw,bh);
+    }
+    ctx.restore();
   }
 
   // ===============================================================
-  //  FASE 4 — Vazio Cosmico
+  //  FASE 4 — Espaço Profundo (Realista)
   // ===============================================================
   else if (phase === 4) {
     const sky=ctx.createLinearGradient(0,0,0,H);
-    sky.addColorStop(0,'#000005'); sky.addColorStop(0.5,'#050010'); sky.addColorStop(1,'#080018');
+    sky.addColorStop(0,'#000003'); sky.addColorStop(0.5,'#030008'); sky.addColorStop(1,'#050012');
     ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
 
-    // Campo de estrelas
-    for (let i=0; i<220; i++) {
+    // Via Láctea
+    ctx.save(); ctx.globalCompositeOperation='screen';
+    ctx.translate(W*0.5, H*0.3);
+    ctx.rotate(-0.3);
+    for (let i=0; i<400; i++) {
+      const mx = (d_s(i*13)-0.5)*W*0.9;
+      const my = (d_s(i*13+1)-0.5)*60 + Math.sin(mx*0.008)*20;
+      const ms = d_s(i*13+2)*1.2+0.2;
+      const ma = (0.08+d_s(i*13+3)*0.12) * (1-Math.abs(my)/80);
+      if (ma < 0.02) continue;
+      ctx.globalAlpha=ma;
+      ctx.fillStyle=`hsl(${220+d_s(i*13+4)*40},${30+d_s(i*13+5)*30}%,${75+d_s(i*13+6)*25}%)`;
+      ctx.beginPath(); ctx.arc(mx,my,ms,0,Math.PI*2); ctx.fill();
+    }
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.restore();
+
+    // Estrelas de fundo com cores reais
+    for (let i=0; i<280; i++) {
       const sx=d_s(i*19)*W, sy=d_s(i*19+1)*H;
-      const sa=0.3+0.7*d_s(i*19+2)+0.2*Math.sin(T*1.5+i*0.8);
-      ctx.globalAlpha=sa; ctx.fillStyle='#fff';
-      ctx.beginPath(); ctx.arc(sx,sy,d_s(i*19+3)*1.8+0.3,0,Math.PI*2); ctx.fill();
+      const sa=0.25+0.6*d_s(i*19+2)+0.15*Math.sin(T*1.2+i*0.6);
+      const sType = d_s(i*19+5);
+      let sCol;
+      if (sType<0.15) sCol='#ffa060'; // gigante vermelha
+      else if (sType<0.3) sCol='#ffe8a0'; // amarela
+      else if (sType<0.7) sCol='#ffffff'; // branca
+      else sCol='#a0c0ff'; // azul
+      ctx.globalAlpha=sa;
+      ctx.fillStyle=sCol;
+      const sr=d_s(i*19+3)*1.5+0.2;
+      ctx.beginPath(); ctx.arc(sx,sy,sr,0,Math.PI*2); ctx.fill();
+      if (sr>1.3) {
+        ctx.globalAlpha=sa*0.2;
+        ctx.fillRect(sx-3,sy-0.3,6,0.6);
+        ctx.fillRect(sx-0.3,sy-3,0.6,6);
+      }
     }
     ctx.globalAlpha=1;
 
-    // Nebulosa colorida
+    // Nebulosa realista (múltiplas camadas com cores reais)
     ctx.save(); ctx.globalCompositeOperation='screen';
-    for (const [nc,nx,ny] of [['rgba(120,0,80,0.12)',W*0.10,H*0.15],['rgba(0,60,160,0.10)',W*0.32,H*0.27],['rgba(180,80,0,0.09)',W*0.54,H*0.39],['rgba(0,100,80,0.08)',W*0.76,H*0.51]]) {
-      const nr=120+Math.floor(nx/W*120);
-      const ng=ctx.createRadialGradient(nx,ny,0,nx,ny,nr);
-      ng.addColorStop(0,nc); ng.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=ng; ctx.beginPath(); ctx.arc(nx,ny,nr,0,Math.PI*2); ctx.fill();
-    }
-    for (let i=0; i<10; i++) {
-      const fx=d_s(i*61)*W, fy=d_s(i*61+1)*H*0.8;
-      const fw=60+d_s(i*61+2)*100, fh=8+d_s(i*61+3)*12;
-      const fa=0.04+d_s(i*61+4)*0.06;
-      ctx.fillStyle=`rgba(${[140,0,180][i%3]},${[40,100,60][i%3]},${[200,160,80][i%3]},${fa})`;
-      ctx.save(); ctx.translate(fx,fy); ctx.rotate(d_s(i*61+5)*Math.PI);
-      ctx.fillRect(-fw/2,-fh/2,fw,fh); ctx.restore();
+    const nebulae = [
+      {x:W*0.15, y:H*0.20, r:140, h:280, s:70, l:20, a:0.06},
+      {x:W*0.40, y:H*0.35, r:100, h:340, s:60, l:18, a:0.05},
+      {x:W*0.65, y:H*0.25, r:120, h:210, s:65, l:22, a:0.04},
+      {x:W*0.80, y:H*0.50, r:90,  h:30,  s:55, l:20, a:0.04},
+    ];
+    for (const neb of nebulae) {
+      for (let layer=0; layer<3; layer++) {
+        const nx=neb.x+d_s(layer*77)*30, ny=neb.y+d_s(layer*77+1)*20;
+        const nr=neb.r*(0.6+layer*0.25);
+        const ng=ctx.createRadialGradient(nx,ny,nr*0.1,nx,ny,nr);
+        ng.addColorStop(0,`hsla(${neb.h+layer*15},${neb.s}%,${neb.l+layer*5}%,${neb.a})`);
+        ng.addColorStop(0.6,`hsla(${neb.h+layer*15+10},${neb.s-10}%,${neb.l}%,${neb.a*0.4})`);
+        ng.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.fillStyle=ng; ctx.beginPath(); ctx.arc(nx,ny,nr,0,Math.PI*2); ctx.fill();
+      }
     }
     ctx.restore();
 
-    // ── PLANETA SATURNO ─────────────────────────────────────────
-    const px=W*0.62+(-camX)*0.003, py=H*0.28, pr=62;
+    // ── PLANETA COM ATMOSFERA ─────────────────────────────────────
+    const px=W*0.62+(-camX)*0.003, py=H*0.30, pr=55;
 
-    // Glow atmosférico externo (multi-camada)
+    // Glow atmosférico
     ctx.save(); ctx.globalCompositeOperation='screen';
-    for (const [r,g,b,ri,ro,a] of [
-      [100,140,255, pr*0.8, pr*3.5, 0.08],
-      [60, 90,220, pr*1.0, pr*2.2, 0.12],
-      [140,180,255, pr*0.5, pr*1.4, 0.06]
+    for (const [cr,cg2,cb,ri,ro,a] of [
+      [60,100,200, pr*0.9, pr*3.0, 0.06],
+      [40,70,180, pr*1.0, pr*2.0, 0.10],
     ]) {
       const g2=ctx.createRadialGradient(px,py,ri,px,py,ro);
-      g2.addColorStop(0,`rgba(${r},${g},${b},${a})`); g2.addColorStop(1,'rgba(0,0,0,0)');
+      g2.addColorStop(0,`rgba(${cr},${cg2},${cb},${a})`); g2.addColorStop(1,'rgba(0,0,0,0)');
       ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(px,py,ro,0,Math.PI*2); ctx.fill();
     }
     ctx.restore();
 
-    // Anéis traseiros (atrás do planeta)
+    // Anéis traseiros
     ctx.save();
-    ctx.beginPath(); ctx.ellipse(px,py,pr*2.35,pr*0.28,0,Math.PI,Math.PI*2); ctx.clip();
+    ctx.beginPath(); ctx.ellipse(px,py,pr*2.3,pr*0.26,0,Math.PI,Math.PI*2); ctx.clip();
     const ringData = [
-      [pr*1.22, pr*0.145, 8,  'rgba(210,185,130,0.55)'],
-      [pr*1.38, pr*0.165, 14, 'rgba(235,215,160,0.70)'],
-      [pr*1.52, pr*0.178, 5,  'rgba(180,155,100,0.35)'], // Cassini gap
-      [pr*1.62, pr*0.190, 18, 'rgba(245,225,170,0.80)'],
-      [pr*1.78, pr*0.205, 10, 'rgba(220,195,140,0.60)'],
-      [pr*1.92, pr*0.218, 7,  'rgba(190,165,110,0.40)'],
-      [pr*2.08, pr*0.230, 4,  'rgba(160,135,85,0.25)'],
-      [pr*2.22, pr*0.240, 3,  'rgba(140,115,70,0.15)'],
+      [pr*1.20, pr*0.14, 6,  'rgba(180,160,120,0.45)'],
+      [pr*1.35, pr*0.16, 12, 'rgba(210,190,140,0.60)'],
+      [pr*1.48, pr*0.17, 3,  'rgba(100,85,60,0.20)'],
+      [pr*1.58, pr*0.18, 16, 'rgba(220,200,150,0.70)'],
+      [pr*1.75, pr*0.20, 8,  'rgba(190,170,120,0.50)'],
+      [pr*1.90, pr*0.21, 5,  'rgba(150,130,90,0.30)'],
+      [pr*2.05, pr*0.22, 3,  'rgba(120,100,70,0.18)'],
     ];
     for (const [ra,rb,lw,col] of ringData) {
       ctx.strokeStyle=col; ctx.lineWidth=lw;
@@ -951,185 +1205,225 @@ function drawBG() {
     }
     ctx.restore();
 
-    // Corpo do planeta
-    const pGrad=ctx.createRadialGradient(px-pr*0.32,py-pr*0.35,pr*0.04,px,py,pr);
-    pGrad.addColorStop(0.00,'#c8d8ff');
-    pGrad.addColorStop(0.12,'#8aaaf0');
-    pGrad.addColorStop(0.30,'#4870d8');
-    pGrad.addColorStop(0.55,'#2848a8');
-    pGrad.addColorStop(0.78,'#102080');
-    pGrad.addColorStop(1.00,'#050e40');
+    // Corpo do planeta (gas giant com bandas)
+    const pGrad=ctx.createRadialGradient(px-pr*0.3,py-pr*0.3,pr*0.05,px,py,pr);
+    pGrad.addColorStop(0.00,'#b8c8e0');
+    pGrad.addColorStop(0.15,'#7090c8');
+    pGrad.addColorStop(0.35,'#4060b0');
+    pGrad.addColorStop(0.55,'#284090');
+    pGrad.addColorStop(0.80,'#101870');
+    pGrad.addColorStop(1.00,'#060840');
     ctx.beginPath(); ctx.arc(px,py,pr,0,Math.PI*2);
     ctx.fillStyle=pGrad; ctx.fill();
 
-    // Faixas de nuvens animadas
+    // Bandas atmosféricas
     ctx.save(); ctx.beginPath(); ctx.arc(px,py,pr,0,Math.PI*2); ctx.clip();
     ctx.globalCompositeOperation='screen';
     const bands = [
-      [py-pr*0.55, pr*0.10, 0.06, 'rgba(180,210,255,1)'],
-      [py-pr*0.28, pr*0.07, 0.04, 'rgba(140,180,255,1)'],
-      [py+pr*0.05, pr*0.09, 0.05, 'rgba(160,200,255,1)'],
-      [py+pr*0.38, pr*0.06, 0.03, 'rgba(120,160,240,1)'],
-      [py+pr*0.62, pr*0.05, 0.025,'rgba(100,140,220,1)'],
+      [py-pr*0.55, pr*0.08, 0.04],
+      [py-pr*0.25, pr*0.06, 0.03],
+      [py+pr*0.10, pr*0.07, 0.035],
+      [py+pr*0.40, pr*0.05, 0.025],
     ];
-    for (const [by2,bry,ba,bc] of bands) {
-      const wave = Math.sin(T*0.15)*3;
-      ctx.strokeStyle=bc; ctx.lineWidth=bry*2; ctx.globalAlpha=ba;
-      ctx.beginPath(); ctx.ellipse(px,by2+wave,pr*0.98,bry,0,0,Math.PI*2); ctx.stroke();
+    for (const [by2,bry,ba] of bands) {
+      ctx.strokeStyle='rgba(140,180,255,1)'; ctx.lineWidth=bry*2; ctx.globalAlpha=ba;
+      ctx.beginPath(); ctx.ellipse(px,by2+Math.sin(T*0.12)*2,pr*0.98,bry,0,0,Math.PI*2); ctx.stroke();
     }
     ctx.restore();
 
-    // Borda de atmosfera (rim light)
+    // Rim light
     ctx.save(); ctx.globalCompositeOperation='screen';
-    const rim=ctx.createRadialGradient(px,py,pr*0.80,px,py,pr*1.0);
-    rim.addColorStop(0,'rgba(0,0,0,0)');
-    rim.addColorStop(0.6,'rgba(80,130,255,0.0)');
-    rim.addColorStop(1,'rgba(120,180,255,0.45)');
+    const rim=ctx.createRadialGradient(px,py,pr*0.82,px,py,pr);
+    rim.addColorStop(0,'rgba(0,0,0,0)'); rim.addColorStop(0.7,'rgba(60,100,200,0.0)'); rim.addColorStop(1,'rgba(100,160,240,0.4)');
     ctx.fillStyle=rim; ctx.beginPath(); ctx.arc(px,py,pr,0,Math.PI*2); ctx.fill();
     ctx.restore();
 
-    // Especular (reflexo de luz)
+    // Anéis dianteiros
     ctx.save();
-    const spec=ctx.createRadialGradient(px-pr*0.38,py-pr*0.40,0,px-pr*0.38,py-pr*0.40,pr*0.42);
-    spec.addColorStop(0,'rgba(255,255,255,0.30)');
-    spec.addColorStop(0.4,'rgba(200,220,255,0.10)');
-    spec.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.beginPath(); ctx.arc(px,py,pr,0,Math.PI*2); ctx.clip();
-    ctx.fillStyle=spec; ctx.beginPath(); ctx.arc(px-pr*0.38,py-pr*0.40,pr*0.42,0,Math.PI*2); ctx.fill();
-    ctx.restore();
-
-    // Sombra do planeta sobre os anéis (lado direito)
-    ctx.save();
-    ctx.beginPath(); ctx.ellipse(px,py,pr*2.35,pr*0.28,0,0,Math.PI*2); ctx.clip();
-    const shad=ctx.createRadialGradient(px,py,pr*0.5,px,py,pr*1.6);
-    shad.addColorStop(0,'rgba(0,0,0,0)');
-    shad.addColorStop(0.65,'rgba(0,0,0,0)');
-    shad.addColorStop(1,'rgba(0,0,8,0.72)');
-    ctx.fillStyle=shad; ctx.fillRect(px,py-pr*0.5,pr*2.5,pr*0.5);
-    ctx.restore();
-
-    // Anéis dianteiros (frente do planeta)
-    ctx.save();
-    ctx.beginPath(); ctx.ellipse(px,py,pr*2.35,pr*0.28,0,0,Math.PI); ctx.clip();
+    ctx.beginPath(); ctx.ellipse(px,py,pr*2.3,pr*0.26,0,0,Math.PI); ctx.clip();
     for (const [ra,rb,lw,col] of ringData) {
       ctx.strokeStyle=col; ctx.lineWidth=lw;
       ctx.beginPath(); ctx.ellipse(px,py,ra,rb,0,0,Math.PI*2); ctx.stroke();
     }
     ctx.restore();
 
-    // Campo de asteroides
-    const off1=(-camX)*0.12;
-    for (let i=0; i<18; i++) {
-      const ax=((d_s(i*31)*28000+off1)%28000)/28000*W;
+    // Asteroides com sombra
+    const aoff=(-camX)*0.10;
+    for (let i=0; i<20; i++) {
+      const ax=((d_s(i*31)*28000+aoff)%28000)/28000*W;
       if (ax<-30||ax>W+30) continue;
-      const ay=H*0.1+d_s(i*31+1)*H*0.65;
-      const ar=4+d_s(i*31+2)*14;
-      const arot=T*(0.4+d_s(i*31+3)*0.8)*(d_s(i*31+4)>0.5?1:-1);
+      const ay=H*0.08+d_s(i*31+1)*H*0.70;
+      const ar=3+d_s(i*31+2)*12;
+      const arot=T*(0.3+d_s(i*31+3)*0.6);
       ctx.save(); ctx.translate(ax,ay); ctx.rotate(arot);
-      ctx.fillStyle=`hsl(${20+d_s(i*31+5)*20},12%,${18+d_s(i*31+6)*15}%)`;
+      // Corpo
+      const aHue=20+d_s(i*31+5)*25;
+      ctx.fillStyle=`hsl(${aHue},15%,${16+d_s(i*31+6)*12}%)`;
       ctx.beginPath();
-      const np=6+Math.floor(d_s(i*31+7)*4);
+      const np=5+Math.floor(d_s(i*31+7)*4);
       for (let v=0; v<np; v++) {
-        const va=(v/np)*Math.PI*2, vr=ar*(0.7+d_s(i*31+v+8)*0.5);
+        const va=(v/np)*Math.PI*2, vr=ar*(0.65+d_s(i*31+v+8)*0.45);
         v===0?ctx.moveTo(Math.cos(va)*vr,Math.sin(va)*vr):ctx.lineTo(Math.cos(va)*vr,Math.sin(va)*vr);
       }
-      ctx.closePath(); ctx.fill(); ctx.restore();
+      ctx.closePath(); ctx.fill();
+      // Iluminação lateral
+      ctx.fillStyle=`hsl(${aHue},10%,${24+d_s(i*31+6)*8}%)`;
+      ctx.beginPath(); ctx.arc(-ar*0.2,-ar*0.2,ar*0.6,0,Math.PI*2); ctx.fill();
+      ctx.restore();
     }
-
   }
 
   // ===============================================================
-  //  FASE 5 — Vulcanico / Infernal
+  //  FASE 5 — Vulcânico Realista
   // ===============================================================
   else if (phase === 5) {
     const sky=ctx.createLinearGradient(0,0,0,H);
-    sky.addColorStop(0,'#0a0000'); sky.addColorStop(0.4,'#300808'); sky.addColorStop(0.75,'#5a1408'); sky.addColorStop(1,'#7a1c00');
+    sky.addColorStop(0,'#080200'); sky.addColorStop(0.25,'#1a0804'); sky.addColorStop(0.5,'#381008'); sky.addColorStop(0.75,'#501808'); sky.addColorStop(1,'#602000');
     ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
 
-    // Nuvens de fumaca
-    for (let i=0; i<12; i++) {
-      const csx=(d_s(i*29)*W*2.5+T*14*(0.8+d_s(i*29+1)*0.5))%(W*2.5)-W*0.5;
-      if (csx<-200||csx>W+200) continue;
-      const csy=30+d_s(i*29+2)*100, cr=80+d_s(i*29+3)*70;
-      const cg=ctx.createRadialGradient(csx,csy,0,csx,csy,cr);
-      cg.addColorStop(0,`rgba(20,8,4,${0.45+d_s(i*29+4)*0.25})`); cg.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(csx,csy,cr,0,Math.PI*2); ctx.fill();
+    // Fumaça volumétrica no céu
+    for (let layer=0; layer<2; layer++) {
+      for (let i=0; i<10; i++) {
+        const csx=(d_s(i*29+layer*40)*W*2.5+T*(6+layer*3)*(0.8+d_s(i*29+1)*0.4))%(W*2.5)-W*0.3;
+        if (csx<-200||csx>W+200) continue;
+        const csy=20+layer*40+d_s(i*29+2)*70;
+        ctx.save(); ctx.globalAlpha=0.25-layer*0.08;
+        for (let b=0; b<3; b++) {
+          const bx2=csx+d_s(i*29+b+3)*100-50;
+          const by2=csy+d_s(i*29+b+6)*20;
+          const br=40+d_s(i*29+b+9)*50;
+          const cg=ctx.createRadialGradient(bx2,by2,br*0.1,bx2,by2,br);
+          cg.addColorStop(0,'rgba(30,12,8,0.9)'); cg.addColorStop(1,'rgba(15,5,2,0)');
+          ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(bx2,by2,br,0,Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+      }
     }
 
-    // Cadeia de vulcoes distantes
-    const off1=(-camX)*0.018;
-    ctx.fillStyle='#1a0500';
-    for (let i=0; i<5; i++) {
-      const vx=((i*5600+off1+800)%16800)/16800*W;
-      if (vx<-150||vx>W+150) continue;
-      const vh=90+d_s(i*17)*60, vw=120+d_s(i*17+1)*60;
-      ctx.beginPath(); ctx.moveTo(vx-vw,H*0.70); ctx.lineTo(vx,H*0.70-vh); ctx.lineTo(vx+vw,H*0.70); ctx.closePath(); ctx.fill();
-      ctx.save(); ctx.globalCompositeOperation='screen';
-      const vcg=ctx.createRadialGradient(vx,H*0.70-vh,0,vx,H*0.70-vh,40);
-      vcg.addColorStop(0,'rgba(255,120,0,0.35)'); vcg.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=vcg; ctx.beginPath(); ctx.arc(vx,H*0.70-vh,40,0,Math.PI*2); ctx.fill(); ctx.restore();
-    }
-
-    // Vulcoes medios
-    const off2=(-camX)*0.045;
-    ctx.fillStyle='#120300';
-    for (let i=0; i<3; i++) {
-      const vx=((i*8000+off2+1200)%22400)/22400*W;
+    // Montanha vulcânica distante com detalhes
+    const off1=(-camX)*0.015;
+    for (let i=0; i<4; i++) {
+      const vx=((i*6000+off1+500)%18000)/18000*W;
       if (vx<-200||vx>W+200) continue;
-      const vh=150+d_s(i*23)*80, vw=180+d_s(i*23+1)*80;
-      ctx.beginPath(); ctx.moveTo(vx-vw,H*0.80); ctx.lineTo(vx,H*0.80-vh); ctx.lineTo(vx+vw,H*0.80); ctx.closePath(); ctx.fill();
+      const vh=80+d_s(i*17)*55, vw=130+d_s(i*17+1)*70;
+      // Corpo da montanha com gradiente
+      const mGrad=ctx.createLinearGradient(vx,H*0.68-vh,vx,H*0.68);
+      mGrad.addColorStop(0,'#1a0800'); mGrad.addColorStop(0.7,'#120400'); mGrad.addColorStop(1,'#0e0300');
+      ctx.fillStyle=mGrad;
+      ctx.beginPath(); ctx.moveTo(vx-vw,H*0.68); ctx.lineTo(vx-vw*0.1,H*0.68-vh);
+      ctx.lineTo(vx+vw*0.1,H*0.68-vh); ctx.lineTo(vx+vw,H*0.68); ctx.closePath(); ctx.fill();
+      // Cratera com lava
       ctx.save(); ctx.globalCompositeOperation='screen';
-      const vcg2=ctx.createRadialGradient(vx,H*0.80-vh,0,vx,H*0.80-vh,55);
-      vcg2.addColorStop(0,'rgba(255,80,0,0.45)'); vcg2.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=vcg2; ctx.beginPath(); ctx.arc(vx,H*0.80-vh,55,0,Math.PI*2); ctx.fill(); ctx.restore();
+      const vcg=ctx.createRadialGradient(vx,H*0.68-vh,0,vx,H*0.68-vh,35+d_s(i*17+2)*15);
+      vcg.addColorStop(0,`rgba(255,${160+Math.sin(T*1.5+i)*40|0},0,0.5)`);
+      vcg.addColorStop(0.5,`rgba(255,80,0,0.2)`);
+      vcg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=vcg; ctx.beginPath(); ctx.arc(vx,H*0.68-vh,35+d_s(i*17+2)*15,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+      // Estrias de lava escorrendo
+      ctx.save(); ctx.globalCompositeOperation='screen';
+      for (let s=0; s<3; s++) {
+        const sx2=vx+(s-1)*vw*0.15;
+        const lGrad=ctx.createLinearGradient(sx2,H*0.68-vh*0.7,sx2,H*0.68);
+        lGrad.addColorStop(0,`rgba(255,100,0,${0.15+0.08*Math.sin(T*1.8+s)})`);
+        lGrad.addColorStop(1,'rgba(180,30,0,0)');
+        ctx.fillStyle=lGrad;
+        ctx.fillRect(sx2-2,H*0.68-vh*0.7,4,vh*0.7);
+      }
+      ctx.restore();
     }
 
-    // Rios de lava
-    const off3=(-camX)*0.10;
+    // Rochas em primeiro plano
+    const off2=(-camX)*0.06;
+    for (let i=0; i<12; i++) {
+      const rx=((d_s(i*51)*28000+off2)%28000)/28000*W;
+      if (rx<-40||rx>W+40) continue;
+      const rh=20+d_s(i*51+1)*40;
+      const rw2=15+d_s(i*51+2)*30;
+      const rGrad=ctx.createLinearGradient(rx,H*0.85-rh,rx,H*0.85);
+      rGrad.addColorStop(0,'#1e0a04'); rGrad.addColorStop(1,'#100400');
+      ctx.fillStyle=rGrad;
+      ctx.beginPath();
+      ctx.moveTo(rx-rw2,H*0.85);
+      const pts=5+Math.floor(d_s(i*51+3)*3);
+      for (let p=0; p<pts; p++) {
+        const pa=(p/pts)*Math.PI;
+        const pr2=rh*(0.7+d_s(i*51+p+4)*0.4);
+        ctx.lineTo(rx-rw2+Math.cos(Math.PI-pa)*rw2*2*(0.5+0.5*Math.cos(pa)), H*0.85-Math.sin(pa)*pr2);
+      }
+      ctx.lineTo(rx+rw2,H*0.85);
+      ctx.closePath(); ctx.fill();
+    }
+
+    // Rios de lava (mais largos e realistas)
+    const off3=(-camX)*0.09;
     ctx.save(); ctx.globalCompositeOperation='screen';
-    for (let i=0; i<6; i++) {
+    for (let i=0; i<5; i++) {
       const lx=((d_s(i*47)*28000+off3)%28000)/28000*W;
       if (lx<-20||lx>W+20) continue;
-      const la=0.18+0.12*Math.sin(T*2.2+i*1.8);
-      const lg=ctx.createLinearGradient(lx-8,H*0.75,lx+8,H);
-      lg.addColorStop(0,`rgba(255,${100+d_s(i*47+1)*60|0},0,${la})`);
-      lg.addColorStop(1,'rgba(180,40,0,0)');
-      ctx.fillStyle=lg; ctx.fillRect(lx-6,H*0.75,12,H*0.25);
+      const lw=6+d_s(i*47+1)*8;
+      const la=0.22+0.12*Math.sin(T*1.8+i*1.5);
+      // Rio com gradiente lateral
+      const lg=ctx.createLinearGradient(lx-lw,H*0.72,lx+lw,H*0.72);
+      lg.addColorStop(0,'rgba(120,20,0,0)');
+      lg.addColorStop(0.3,`rgba(255,${80+d_s(i*47+2)*60|0},0,${la})`);
+      lg.addColorStop(0.5,`rgba(255,${150+Math.sin(T*2.5+i)*50|0},30,${la*1.3})`);
+      lg.addColorStop(0.7,`rgba(255,${80+d_s(i*47+2)*60|0},0,${la})`);
+      lg.addColorStop(1,'rgba(120,20,0,0)');
+      ctx.fillStyle=lg; ctx.fillRect(lx-lw,H*0.72,lw*2,H*0.28);
     }
     ctx.restore();
 
-    // Colunas de fogo
-    const off4=(-camX)*0.08;
-    ctx.save(); ctx.globalCompositeOperation='screen';
-    for (let i=0; i<5; i++) {
-      const fx=((d_s(i*53)*28000+off4)%28000)/28000*W;
-      if (fx<-30||fx>W+30) continue;
-      const fph=(T*1.5+d_s(i*53+1)*6.28)%(Math.PI*2);
-      const fh=(100+d_s(i*53+2)*80)*(0.7+0.3*Math.sin(fph));
-      const fw=20+d_s(i*53+3)*14;
-      const fg=ctx.createRadialGradient(fx,H-fh*0.5,fw*0.1,fx,H-fh*0.5,fh*0.6);
-      fg.addColorStop(0,'rgba(255,220,60,0.7)'); fg.addColorStop(0.4,'rgba(255,80,0,0.45)'); fg.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=fg; ctx.beginPath(); ctx.ellipse(fx,H-fh*0.5,fw,fh*0.6,0,0,Math.PI*2); ctx.fill();
-    }
-    ctx.restore();
-
-    // Brasas subindo
-    for (let i=0; i<40; i++) {
-      const eph=(T*0.8+d_s(i*13)*8)%8;
-      const ex=d_s(i*13+1)*W+Math.sin(T*1.8+i)*12;
-      const ey=H-(eph/8)*H*1.1;
+    // Brasas e cinzas subindo
+    for (let i=0; i<50; i++) {
+      const eph=(T*0.6+d_s(i*13)*10)%10;
+      const ex=d_s(i*13+1)*W+Math.sin(T*1.2+i)*15+Math.cos(T*0.8+i*0.6)*8;
+      const ey=H-(eph/10)*H*1.15;
       if (ey<-10||ey>H+10) continue;
-      ctx.save(); ctx.globalAlpha=0.7*(1-eph/8);
-      ctx.fillStyle=`hsl(${20+d_s(i*13+2)*30},100%,${55+d_s(i*13+3)*30}%)`;
-      ctx.beginPath(); ctx.arc(ex,ey,1+d_s(i*13+4)*2.5,0,Math.PI*2); ctx.fill(); ctx.restore();
+      const eLife = 1-eph/10;
+      ctx.save();
+      if (d_s(i*13+5)>0.4) {
+        // Brasa (quente)
+        ctx.globalAlpha=0.6*eLife;
+        const eHue=15+d_s(i*13+2)*25;
+        ctx.fillStyle=`hsl(${eHue},100%,${50+d_s(i*13+3)*25}%)`;
+        ctx.beginPath(); ctx.arc(ex,ey,1+d_s(i*13+4)*2,0,Math.PI*2); ctx.fill();
+        // Glow
+        ctx.globalCompositeOperation='screen';
+        ctx.globalAlpha=0.15*eLife;
+        const eg=ctx.createRadialGradient(ex,ey,0,ex,ey,6);
+        eg.addColorStop(0,`rgba(255,120,0,0.5)`); eg.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.fillStyle=eg; ctx.beginPath(); ctx.arc(ex,ey,6,0,Math.PI*2); ctx.fill();
+      } else {
+        // Cinza (fria)
+        ctx.globalAlpha=0.3*eLife;
+        ctx.fillStyle=`rgba(80,60,50,1)`;
+        ctx.beginPath(); ctx.arc(ex,ey,0.8+d_s(i*13+4)*1.5,0,Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
     }
 
-    // Brilho de lava no chao
+    // Brilho de calor no horizonte
     ctx.save(); ctx.globalCompositeOperation='screen';
-    const gGlow=ctx.createLinearGradient(0,H*0.72,0,H);
-    gGlow.addColorStop(0,'rgba(0,0,0,0)'); gGlow.addColorStop(1,`rgba(180,40,0,${0.20+0.10*Math.sin(T*1.4)})`);
-    ctx.fillStyle=gGlow; ctx.fillRect(0,H*0.72,W,H*0.28); ctx.restore();
+    const heatGlow=ctx.createLinearGradient(0,H*0.65,0,H);
+    heatGlow.addColorStop(0,'rgba(0,0,0,0)');
+    heatGlow.addColorStop(0.4,`rgba(160,30,0,${0.08+0.04*Math.sin(T*1.2)})`);
+    heatGlow.addColorStop(1,`rgba(200,50,0,${0.18+0.08*Math.sin(T*1.0)})`);
+    ctx.fillStyle=heatGlow; ctx.fillRect(0,H*0.65,W,H*0.35);
+    ctx.restore();
 
+    // Distorção de calor (ondulação sutil simulada com linhas)
+    ctx.save(); ctx.globalAlpha=0.03;
+    for (let y=H*0.7; y<H; y+=8) {
+      const wave=Math.sin(T*2+y*0.05)*3;
+      ctx.strokeStyle='rgba(255,100,0,1)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(0,y);
+      for (let x=0; x<W; x+=20) {
+        ctx.lineTo(x,y+Math.sin(T*3+x*0.02+y*0.01)*wave);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   // -- Vinheta leve nas bordas (todas as fases) --
