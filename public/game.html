@@ -3345,7 +3345,7 @@ function drawTrail() {
   for (let i = 1; i < trailPositions.length; i++) {
     const t = trailPositions[i];
     const alpha = (1 - i / trailPositions.length) * 0.25;
-    const [r,g,b] = trailColors[Math.min(t.phase-1, 4)];
+    const [r,g,b] = trailColors[Math.min(t.phase-1, 5)];
     const sx = t.x - camX;
     if (sx < -20 || sx > W + 20) continue;
     ctx.globalAlpha = alpha;
