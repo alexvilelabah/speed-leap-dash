@@ -3053,7 +3053,8 @@ function startAmbient(ph) {
   else if (ph === 4) { ambPhase4.i = 0; ambPhase4(id); }
   else if (ph === 5) { ambPhase5.i = 0; ambPhase5(id); }
   else if (ph === 6) { ambPhase6.i = 0; ambPhase6(id); }
-  else { ambPhase7.i = 0; ambPhase7(id); }
+  else if (ph === 7) { ambPhase7.i = 0; ambPhase7(id); }
+  else { ambPhase8.i = 0; ambPhase8(id); }
   // Start random environmental sfx
   startEnvSfx(ph, id);
 }
