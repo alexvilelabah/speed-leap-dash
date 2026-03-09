@@ -1793,6 +1793,193 @@ function drawBG() {
     ctx.fillStyle=ground; ctx.fillRect(0,H*0.84,W,H*0.16);
   }
 
+  // ===============================================================
+  //  FASE 7 — Cemitério Maldito (Nível 2 Fase 2)
+  // ===============================================================
+  else if (phase === 7) {
+    // Céu vermelho-sangue com nuvens escuras
+    const sky=ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'#08000a'); sky.addColorStop(0.15,'#1a0008'); sky.addColorStop(0.35,'#2a0510'); sky.addColorStop(0.55,'#1a0308'); sky.addColorStop(0.75,'#0c0206'); sky.addColorStop(1,'#060104');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+
+    // ── LUA DE SANGUE ──────────────────────────────────────────
+    const moonX = W*0.82 + (-camX)*0.003;
+    const moonY = H*0.15;
+    const moonR = 45;
+    // Halo vermelho externo
+    ctx.save(); ctx.globalCompositeOperation='screen';
+    for (let r=3; r>=1; r--) {
+      const halo=ctx.createRadialGradient(moonX,moonY,moonR*0.5,moonX,moonY,moonR*r*1.2);
+      halo.addColorStop(0,`rgba(180,0,0,${0.08/r})`); halo.addColorStop(0.5,`rgba(120,0,0,${0.04/r})`); halo.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=halo; ctx.beginPath(); ctx.arc(moonX,moonY,moonR*r*1.2,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+    // Corpo da lua
+    ctx.save();
+    const moonGrad=ctx.createRadialGradient(moonX-8,moonY-5,0,moonX,moonY,moonR);
+    moonGrad.addColorStop(0,'#cc2010'); moonGrad.addColorStop(0.4,'#991008'); moonGrad.addColorStop(0.8,'#660808'); moonGrad.addColorStop(1,'#330404');
+    ctx.fillStyle=moonGrad; ctx.beginPath(); ctx.arc(moonX,moonY,moonR,0,Math.PI*2); ctx.fill();
+    // Crateras
+    ctx.globalAlpha=0.15;
+    for (let i=0; i<6; i++) {
+      const cx2=moonX-15+d_s(i*97)*30, cy2=moonY-12+d_s(i*97+1)*24, cr=3+d_s(i*97+2)*8;
+      ctx.fillStyle='#1a0000'; ctx.beginPath(); ctx.arc(cx2,cy2,cr,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+
+    // Nuvens escuras passando na frente da lua
+    for (let i=0; i<8; i++) {
+      const csx=(d_s(i*47)*W*3+T*(8+d_s(i*47+1)*6))%(W*3)-W*0.3;
+      if (csx<-250||csx>W+250) continue;
+      const csy=10+d_s(i*47+2)*H*0.35;
+      ctx.save(); ctx.globalAlpha=0.25+d_s(i*47+3)*0.15;
+      for (let b=0; b<4; b++) {
+        const bx2=csx+d_s(i*47+b+4)*180-90;
+        const by2=csy+d_s(i*47+b+8)*25;
+        const br=25+d_s(i*47+b+12)*35;
+        const cg=ctx.createRadialGradient(bx2,by2,br*0.1,bx2,by2,br);
+        cg.addColorStop(0,'rgba(8,2,4,0.9)'); cg.addColorStop(1,'rgba(3,0,2,0)');
+        ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(bx2,by2,br,0,Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // ── LÁPIDES em silhueta ─────────────────────────────────────
+    const graveOff=(-camX)*0.04;
+    for (let i=0; i<18; i++) {
+      const gx=((d_s(i*83)*W*2.5+graveOff)%(W*2.5))/2.5;
+      if (gx<-40||gx>W+40) continue;
+      const gh=20+d_s(i*83+1)*40;
+      const gw=10+d_s(i*83+2)*15;
+      const gy=H*0.68+d_s(i*83+3)*H*0.10;
+      ctx.fillStyle='#0a0208';
+      // Tipos de lápide
+      const type=d_s(i*83+4);
+      if (type<0.4) {
+        // Retangular com topo arredondado
+        ctx.fillRect(gx-gw/2, gy-gh, gw, gh);
+        ctx.beginPath(); ctx.arc(gx, gy-gh, gw/2, Math.PI, 0); ctx.fill();
+      } else if (type<0.7) {
+        // Cruz
+        ctx.fillRect(gx-gw*0.15, gy-gh, gw*0.3, gh);
+        ctx.fillRect(gx-gw*0.5, gy-gh*0.7, gw, gw*0.25);
+      } else {
+        // Pedra irregular
+        ctx.beginPath();
+        ctx.moveTo(gx-gw/2, gy);
+        ctx.lineTo(gx-gw/2+2, gy-gh*0.8);
+        ctx.quadraticCurveTo(gx, gy-gh-5, gx+gw/2-2, gy-gh*0.85);
+        ctx.lineTo(gx+gw/2, gy);
+        ctx.closePath(); ctx.fill();
+      }
+      // Texto RIP fantasma
+      if (d_s(i*83+5)>0.5 && gh>30) {
+        ctx.save(); ctx.globalAlpha=0.12;
+        ctx.fillStyle='#440015'; ctx.font='6px Georgia'; ctx.textAlign='center';
+        ctx.fillText('RIP', gx, gy-gh*0.4);
+        ctx.textAlign='left'; ctx.restore();
+      }
+    }
+
+    // ── MÃOS saindo do chão ────────────────────────────────────
+    for (let i=0; i<8; i++) {
+      const hx=((d_s(i*67)*W*2+T*0.5*(0.5+d_s(i*67+1)*0.5))%(W*2))-W*0.1;
+      if (hx<-25||hx>W+25) continue;
+      const hy=H*0.80+d_s(i*67+2)*H*0.06;
+      const hscale=0.6+d_s(i*67+3)*0.6;
+      const sway=Math.sin(T*0.8+i*2.1)*3*hscale;
+      ctx.save();
+      ctx.translate(hx+sway, hy);
+      ctx.scale(hscale, hscale);
+      ctx.fillStyle='#0c0308';
+      // Braço
+      ctx.fillRect(-3, 0, 6, 30);
+      // Palma
+      ctx.beginPath(); ctx.ellipse(0, -2, 8, 6, 0, 0, Math.PI*2); ctx.fill();
+      // Dedos (5)
+      for (let f=0; f<5; f++) {
+        const fx=-8+f*4, fy=-5-f*2+(f>2?(f-2)*2:0);
+        const fh=10+d_s(i*67+f+4)*6;
+        const fang=(f-2)*0.15+Math.sin(T*1.2+i+f)*0.08;
+        ctx.save(); ctx.translate(fx, fy); ctx.rotate(fang);
+        ctx.fillRect(-1.5, -fh, 3, fh);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    // ── CORVOS voando ──────────────────────────────────────────
+    for (let i=0; i<10; i++) {
+      const cx2=((d_s(i*91)*W*3+T*18*(0.6+d_s(i*91+1)*0.8))%(W*3))-W*0.3;
+      const cy2=H*0.05+d_s(i*91+2)*H*0.40+Math.sin(T*1.2+i*2.8)*20;
+      if (cx2<-30||cx2>W+30) continue;
+      const wingPh=T*6+i*4.1;
+      const wingA=Math.sin(wingPh)*0.7;
+      const cs=5+d_s(i*91+3)*5;
+      ctx.save();
+      ctx.translate(cx2, cy2);
+      ctx.fillStyle='#060008';
+      // Corpo
+      ctx.beginPath(); ctx.ellipse(0,0,cs*0.5,cs*0.2,0,0,Math.PI*2); ctx.fill();
+      // Asa esquerda (angular como corvo)
+      ctx.beginPath();
+      ctx.moveTo(-cs*0.3, 0);
+      ctx.lineTo(-cs*(1.0+wingA*0.2), -cs*(0.4+wingA*0.5));
+      ctx.lineTo(-cs*0.8, -cs*wingA*0.2);
+      ctx.lineTo(-cs*0.3, cs*0.05);
+      ctx.fill();
+      // Asa direita
+      ctx.beginPath();
+      ctx.moveTo(cs*0.3, 0);
+      ctx.lineTo(cs*(1.0+wingA*0.2), -cs*(0.4+wingA*0.5));
+      ctx.lineTo(cs*0.8, -cs*wingA*0.2);
+      ctx.lineTo(cs*0.3, cs*0.05);
+      ctx.fill();
+      // Bico
+      ctx.beginPath();
+      ctx.moveTo(cs*0.5, -cs*0.05);
+      ctx.lineTo(cs*0.75, cs*0.05);
+      ctx.lineTo(cs*0.5, cs*0.1);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // ── RELÂMPAGOS VERMELHOS (raros mas dramáticos) ──────────
+    const lChance = Math.sin(T*1.8)*Math.sin(T*4.3)*Math.sin(T*7.1);
+    if (lChance > 0.7) {
+      ctx.save(); ctx.globalCompositeOperation='screen';
+      ctx.fillStyle='rgba(150,20,20,0.12)'; ctx.fillRect(0,0,W,H);
+      let lx2=W*0.2+Math.sin(T*3.5)*W*0.6, ly2=0;
+      ctx.strokeStyle='rgba(220,60,40,0.85)'; ctx.lineWidth=2.5;
+      ctx.shadowColor='rgba(200,30,20,0.8)'; ctx.shadowBlur=18;
+      ctx.beginPath(); ctx.moveTo(lx2,ly2);
+      for (let s=0; s<10; s++) {
+        lx2+=(d_s(s*23+99)-0.5)*45; ly2+=H/10;
+        ctx.lineTo(lx2,ly2);
+      }
+      ctx.stroke();
+      ctx.shadowBlur=0; ctx.restore();
+    }
+
+    // Névoa verde/cinza rasteira de cemitério
+    for (let f=0; f<5; f++) {
+      const fogY = H*0.70 + f*H*0.04;
+      ctx.save();
+      ctx.globalAlpha = 0.08 - f*0.012 + 0.025*Math.sin(T*0.3+f*1.5);
+      const fog=ctx.createLinearGradient(0,fogY,0,fogY+H*0.08);
+      fog.addColorStop(0,'rgba(0,0,0,0)');
+      fog.addColorStop(0.5,`rgba(${15+f*5},${25-f*3},${12+f*4},1)`);
+      fog.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=fog; ctx.fillRect(0,fogY,W,H*0.08);
+      ctx.restore();
+    }
+
+    // Chão de terra do cemitério
+    const ground=ctx.createLinearGradient(0,H*0.82,0,H);
+    ground.addColorStop(0,'rgba(0,0,0,0)'); ground.addColorStop(0.3,'rgba(12,4,6,0.9)'); ground.addColorStop(1,'rgba(8,2,4,0.95)');
+    ctx.fillStyle=ground; ctx.fillRect(0,H*0.82,W,H*0.18);
+  }
+
   // -- Vinheta leve nas bordas (todas as fases) --
   const vign = ctx.createRadialGradient(W/2,H/2,H*0.32,W/2,H/2,H*0.78);
   vign.addColorStop(0,'rgba(0,0,0,0)'); vign.addColorStop(1,'rgba(0,0,0,0.52)');
