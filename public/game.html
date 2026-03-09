@@ -2398,7 +2398,7 @@ function drawLight() {
     fg.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=fg; ctx.fillRect(0,0,W,H);
 
-  } else {
+  } else if (phase === 6) {
     // Fase 6 — Luz roxa sinistra com pulsação vermelha
     const R = 250 * fl;
     const pg = ctx.createRadialGradient(cx,cy,0,cx,cy,R);
@@ -2413,6 +2413,22 @@ function drawLight() {
     dg.addColorStop(0.5,`rgba(200,0,40,${darkPulse})`);
     dg.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=dg; ctx.fillRect(0,0,W,H);
+
+  } else {
+    // Fase 7 — Luz vermelha sangue com pulsação escura
+    const R = 240 * fl;
+    const pg = ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+    pg.addColorStop(0,'rgba(255,80,60,0.48)');
+    pg.addColorStop(0.28,'rgba(180,20,15,0.26)');
+    pg.addColorStop(0.62,'rgba(100,5,5,0.10)');
+    pg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=pg; ctx.fillRect(0,0,W,H);
+    const bloodPulse = 0.09 + Math.sin(T*2.5)*0.06;
+    const bg = ctx.createRadialGradient(cx,cy,R*0.50,cx,cy,R*0.82);
+    bg.addColorStop(0,'rgba(0,0,0,0)');
+    bg.addColorStop(0.5,`rgba(180,0,10,${bloodPulse})`);
+    bg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
   }
 
   ctx.restore();
