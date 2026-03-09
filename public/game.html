@@ -55,6 +55,9 @@ document.addEventListener('keydown', e => {
   if (gameFinished) { restartGame(); return; }
   if (!gameStarted) { gameStarted = true; initAudio(); return; }
   keys[e.code] = true; e.preventDefault();
+  // Debug: press 6 to jump to phase 6
+  if (e.code === 'Digit6') { player.x = 33100; player.y = 380; camX = 33000; }
+  if (e.code === 'Digit5') { player.x = 23100; player.y = 380; camX = 23000; }
 });
 document.addEventListener('keyup', e => { keys[e.code] = false; });
 canvas.addEventListener('click', () => {
