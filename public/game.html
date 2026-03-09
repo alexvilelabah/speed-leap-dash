@@ -3376,7 +3376,7 @@ function loop() {
   if (newPhase !== currentPhase) {
     currentPhase = newPhase; phaseNotifAlpha = 2.2;
     phaseFlashAlpha = 0.6;
-    phaseFlashColor = ['#00e8c8','#ffb030','#b060ff','#88aaff','#ff4020'][Math.min(newPhase-1, 4)];
+    phaseFlashColor = ['#00e8c8','#ffb030','#b060ff','#88aaff','#ff4020','#a020e0'][Math.min(newPhase-1, 5)];
     shakeIntensity = 8;
     sfxPhaseChange(newPhase); startAmbient(newPhase);
   }
