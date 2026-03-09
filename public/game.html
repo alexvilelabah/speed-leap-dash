@@ -3692,6 +3692,60 @@ function playEnvSfx(ph) {
         ns.start(t); ns.stop(t+0.5);
       }
     }
+  } else {
+    // Fase 8 — Cyberpunk: sirenes distantes, interferência eletrônica, anúncios holográficos
+    const r = Math.random();
+    if (r < 0.3) {
+      // Sirene policial distante
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.connect(g); g.connect(ambientGain);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(600, t);
+      o.frequency.linearRampToValueAtTime(900, t+0.4);
+      o.frequency.linearRampToValueAtTime(600, t+0.8);
+      o.frequency.linearRampToValueAtTime(900, t+1.2);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.025, t+0.1);
+      g.gain.linearRampToValueAtTime(0.02, t+1.0);
+      g.gain.linearRampToValueAtTime(0, t+1.5);
+      o.start(t); o.stop(t+1.6);
+    } else if (r < 0.55) {
+      // Interferência/glitch eletrônico
+      const nb = createNoiseBuffer(0.15, 'white');
+      if (nb) {
+        const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+        ns.buffer = nb; nf.type = 'bandpass'; nf.frequency.value = 2000+Math.random()*3000; nf.Q.value = 15;
+        ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+        ng.gain.setValueAtTime(0.06, t);
+        ng.gain.exponentialRampToValueAtTime(0.001, t+0.12);
+        ns.start(t); ns.stop(t+0.15);
+      }
+    } else if (r < 0.75) {
+      // Buzina de carro voador
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.connect(g); g.connect(ambientGain);
+      o.type = 'square';
+      o.frequency.value = 180+Math.random()*80;
+      g.gain.setValueAtTime(0.03, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t+0.6);
+      o.start(t); o.stop(t+0.7);
+    } else {
+      // Anúncio holográfico — voz distorcida
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.connect(g); g.connect(ambientGain);
+      if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.6; o.connect(rg); rg.connect(reverbNode); }
+      o.type = 'sawtooth';
+      const baseF = 200+Math.random()*100;
+      o.frequency.setValueAtTime(baseF, t);
+      o.frequency.setValueAtTime(baseF*1.2, t+0.15);
+      o.frequency.setValueAtTime(baseF*0.8, t+0.3);
+      o.frequency.setValueAtTime(baseF, t+0.45);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.02, t+0.05);
+      g.gain.linearRampToValueAtTime(0.015, t+0.4);
+      g.gain.linearRampToValueAtTime(0, t+0.6);
+      o.start(t); o.stop(t+0.65);
+    }
   }
 }
 
