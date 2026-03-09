@@ -501,6 +501,13 @@ let jumpCount = 0;
 let gameFinished = false;
 let landingEffects = [];
 
+// ── NOVOS EFEITOS VISUAIS ────────────────────────────────────
+let shakeX = 0, shakeY = 0, shakeIntensity = 0;
+let chromaticAlpha = 0;
+let speedLineParticles = [];
+let trailPositions = [];
+let phaseFlashAlpha = 0, phaseFlashColor = '#00e8c8';
+
 function getPhase() {
   if (player.x >= 23000) return 5;
   if (player.x >= 15000) return 4;
