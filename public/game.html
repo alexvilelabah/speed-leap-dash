@@ -1977,21 +1977,77 @@ function drawHUD() {
   }
 }
 
-// ── ÁUDIO ─────────────────────────────────────────────────────
-let AC = null, masterVol;
+// ── ÁUDIO IMERSIVO ────────────────────────────────────────────
+let AC = null, masterVol, reverbNode, ambientGain;
 let ambTimer = null, ambPhaseId = 0;
+let continuousNodes = []; // nodes that play continuously per phase
+let sfxTimers = []; // random environmental sfx timers
+
+function createNoiseBuffer(duration, type) {
+  if (!AC) return null;
+  const len = AC.sampleRate * duration;
+  const buf = AC.createBuffer(1, len, AC.sampleRate);
+  const data = buf.getChannelData(0);
+  if (type === 'white') {
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  } else if (type === 'brown') {
+    let last = 0;
+    for (let i = 0; i < len; i++) {
+      last = (last + (Math.random() * 2 - 1) * 0.02) * 0.998;
+      data[i] = last * 10;
+    }
+  } else if (type === 'pink') {
+    let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+    for (let i = 0; i < len; i++) {
+      const w = Math.random() * 2 - 1;
+      b0 = 0.99886*b0 + w*0.0555179;
+      b1 = 0.99332*b1 + w*0.0750759;
+      b2 = 0.96900*b2 + w*0.1538520;
+      b3 = 0.86650*b3 + w*0.3104856;
+      b4 = 0.55000*b4 + w*0.5329522;
+      b5 = -0.7616*b5 - w*0.0168980;
+      data[i] = (b0+b1+b2+b3+b4+b5+b6+w*0.5362) * 0.11;
+      b6 = w * 0.115926;
+    }
+  }
+  return buf;
+}
+
+function createReverb(decay, wet) {
+  if (!AC) return null;
+  const len = AC.sampleRate * decay;
+  const buf = AC.createBuffer(2, len, AC.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i/len, 2.5);
+    }
+  }
+  const conv = AC.createConvolver();
+  conv.buffer = buf;
+  const wetGain = AC.createGain();
+  wetGain.gain.value = wet;
+  conv.connect(wetGain);
+  wetGain.connect(masterVol);
+  return conv;
+}
 
 function initAudio() {
   if (AC) { AC.resume(); return; }
   AC = new (window.AudioContext || window.webkitAudioContext)();
   masterVol = AC.createGain(); masterVol.gain.value = 0.5; masterVol.connect(AC.destination);
+  ambientGain = AC.createGain(); ambientGain.gain.value = 0.35; ambientGain.connect(masterVol);
+  reverbNode = createReverb(2.5, 0.3);
   startAmbient(getPhase());
 }
+
+// ── SFX DE JOGO ───────────────────────────────────────────────
 function sfxJump() {
   if (!AC) return;
   const ph = getPhase();
   const o = AC.createOscillator(), g = AC.createGain();
   o.connect(g); g.connect(masterVol);
+  if (reverbNode) { const g2 = AC.createGain(); g2.gain.value = 0.3; o.connect(g2); g2.connect(reverbNode); }
   o.type = (['square','triangle','sine','sine','sawtooth'])[Math.min(ph-1,4)];
   const [f1,f2] = ([[160,640],[150,460],[130,370],[110,290],[95,240]])[Math.min(ph-1,4)];
   o.frequency.setValueAtTime(f1, AC.currentTime);
@@ -1999,15 +2055,38 @@ function sfxJump() {
   g.gain.setValueAtTime(0.11, AC.currentTime);
   g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + 0.13);
   o.start(); o.stop(AC.currentTime + 0.14);
+  // Wing flutter sound
+  const nBuf = createNoiseBuffer(0.08, 'white');
+  if (nBuf) {
+    const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+    ns.buffer = nBuf; nf.type = 'bandpass'; nf.frequency.value = 2000 + ph*500; nf.Q.value = 2;
+    ns.connect(nf); nf.connect(ng); ng.connect(masterVol);
+    ng.gain.setValueAtTime(0.06, AC.currentTime);
+    ng.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.07);
+    ns.start(); ns.stop(AC.currentTime + 0.08);
+  }
+}
+
+function sfxLand() {
+  if (!AC) return;
+  const nBuf = createNoiseBuffer(0.12, 'brown');
+  if (nBuf) {
+    const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+    ns.buffer = nBuf; nf.type = 'lowpass'; nf.frequency.value = 400;
+    ns.connect(nf); nf.connect(ng); ng.connect(masterVol);
+    ng.gain.setValueAtTime(0.08, AC.currentTime);
+    ng.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.1);
+    ns.start(); ns.stop(AC.currentTime + 0.12);
+  }
 }
 
 function sfxFinish() {
   if (!AC) return;
-  // Acorde final ascendente — vitória épica
   const notes = [[261,'sine'],[329,'sine'],[392,'triangle'],[523,'sine'],[784,'sine'],[1046,'sine']];
   notes.forEach(([f,tp], i) => {
     const o = AC.createOscillator(), g = AC.createGain();
     o.connect(g); g.connect(masterVol);
+    if (reverbNode) { const g2 = AC.createGain(); g2.gain.value = 0.5; o.connect(g2); g2.connect(reverbNode); }
     o.type = tp; o.frequency.value = f;
     const t = AC.currentTime + i * 0.12;
     g.gain.setValueAtTime(0, t);
@@ -2020,6 +2099,16 @@ function sfxFinish() {
 
 function sfxDeath() {
   if (!AC) return;
+  // Impact thud
+  const nBuf = createNoiseBuffer(0.4, 'brown');
+  if (nBuf) {
+    const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+    ns.buffer = nBuf; nf.type = 'lowpass'; nf.frequency.value = 200;
+    ns.connect(nf); nf.connect(ng); ng.connect(masterVol);
+    ng.gain.setValueAtTime(0.15, AC.currentTime);
+    ng.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.35);
+    ns.start(); ns.stop(AC.currentTime + 0.4);
+  }
   [0, 0.07, 0.14].forEach((d, i) => {
     const o = AC.createOscillator(), g = AC.createGain();
     o.connect(g); g.connect(masterVol);
@@ -2034,6 +2123,18 @@ function sfxDeath() {
 
 function sfxPhaseChange(ph) {
   if (!AC) return;
+  // Whoosh transition
+  const nBuf = createNoiseBuffer(0.8, 'pink');
+  if (nBuf) {
+    const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+    ns.buffer = nBuf; nf.type = 'bandpass'; nf.frequency.value = 800;
+    nf.frequency.linearRampToValueAtTime(3000, AC.currentTime + 0.3);
+    nf.frequency.linearRampToValueAtTime(200, AC.currentTime + 0.7);
+    ns.connect(nf); nf.connect(ng); ng.connect(masterVol);
+    ng.gain.setValueAtTime(0.12, AC.currentTime);
+    ng.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.7);
+    ns.start(); ns.stop(AC.currentTime + 0.8);
+  }
   const chords = {
     2: [[392,'triangle'],[494,'triangle'],[587,'triangle'],[784,'triangle']],
     3: [[130,'square'],[155,'square'],[196,'square'],[233,'square'],[277,'sine']],
@@ -2043,6 +2144,7 @@ function sfxPhaseChange(ph) {
   (chords[ph]||[]).forEach(([f,tp],i) => {
     const o = AC.createOscillator(), g = AC.createGain();
     o.connect(g); g.connect(masterVol);
+    if (reverbNode) { const g2 = AC.createGain(); g2.gain.value = 0.4; o.connect(g2); g2.connect(reverbNode); }
     o.type = tp; o.frequency.value = f;
     const t = AC.currentTime + i * 0.09;
     g.gain.setValueAtTime(0.14, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
@@ -2050,28 +2152,427 @@ function sfxPhaseChange(ph) {
   });
 }
 
-function stopAmbient() { clearTimeout(ambTimer); ambTimer = null; ambPhaseId++; }
+// ── PARAR AMBIENT ─────────────────────────────────────────────
+function stopAmbient() {
+  clearTimeout(ambTimer); ambTimer = null; ambPhaseId++;
+  sfxTimers.forEach(t => clearTimeout(t)); sfxTimers = [];
+  continuousNodes.forEach(n => { try { n.stop(); } catch(e) {} });
+  continuousNodes = [];
+}
 
 function startAmbient(ph) {
   stopAmbient();
   const id = ambPhaseId;
   if (!AC) return;
+  // Start continuous ambient layer
+  startContinuousAmbient(ph, id);
+  // Start melodic ambient
   if (ph === 1) { ambPhase1.i = 0; ambPhase1(id); }
-  else if (ph === 2) { ambPhase2.i = 0; ambPhase2.dt = 0; ambPhase2(id); }
+  else if (ph === 2) { ambPhase2.i = 0; ambPhase2(id); }
   else if (ph === 3) { ambPhase3.i = 0; ambPhase3(id); }
   else if (ph === 4) { ambPhase4.i = 0; ambPhase4(id); }
   else { ambPhase5.i = 0; ambPhase5(id); }
+  // Start random environmental sfx
+  startEnvSfx(ph, id);
 }
 
-// Fase 1: notas suaves pentatônicas — caverna bioluminescente calma
+// ── CAMADA CONTÍNUA DE AMBIENTE ───────────────────────────────
+function startContinuousAmbient(ph, id) {
+  if (!AC || ambPhaseId !== id) return;
+
+  if (ph === 1) {
+    // Floresta: vento suave filtrado + grilos (noise bandpass alto)
+    const windBuf = createNoiseBuffer(4, 'pink');
+    if (windBuf) {
+      const ws = AC.createBufferSource(), wf = AC.createBiquadFilter(), wg = AC.createGain();
+      ws.buffer = windBuf; ws.loop = true;
+      wf.type = 'lowpass'; wf.frequency.value = 600; wf.Q.value = 0.7;
+      ws.connect(wf); wf.connect(wg); wg.connect(ambientGain);
+      wg.gain.value = 0.12;
+      ws.start(); continuousNodes.push(ws);
+      // LFO no filtro do vento (rajadas)
+      const lfo = AC.createOscillator(), lfoG = AC.createGain();
+      lfo.type = 'sine'; lfo.frequency.value = 0.15;
+      lfoG.gain.value = 300;
+      lfo.connect(lfoG); lfoG.connect(wf.frequency);
+      lfo.start(); continuousNodes.push(lfo);
+    }
+    // Grilos: noise bandpass agudo
+    const cricketBuf = createNoiseBuffer(2, 'white');
+    if (cricketBuf) {
+      const cs = AC.createBufferSource(), cf = AC.createBiquadFilter(), cg = AC.createGain();
+      cs.buffer = cricketBuf; cs.loop = true;
+      cf.type = 'bandpass'; cf.frequency.value = 4800; cf.Q.value = 15;
+      cs.connect(cf); cf.connect(cg); cg.connect(ambientGain);
+      cg.gain.value = 0.04;
+      // Pulsar grilos
+      const clfo = AC.createOscillator(), clfoG = AC.createGain();
+      clfo.type = 'square'; clfo.frequency.value = 7;
+      clfoG.gain.value = 0.04;
+      clfo.connect(clfoG); clfoG.connect(cg.gain);
+      cs.start(); clfo.start();
+      continuousNodes.push(cs, clfo);
+    }
+  } else if (ph === 2) {
+    // Oceano: corrente subaquática (brown noise filtrado) + bolhas contínuas
+    const waterBuf = createNoiseBuffer(4, 'brown');
+    if (waterBuf) {
+      const ws = AC.createBufferSource(), wf = AC.createBiquadFilter(), wg = AC.createGain();
+      ws.buffer = waterBuf; ws.loop = true;
+      wf.type = 'lowpass'; wf.frequency.value = 350; wf.Q.value = 1.5;
+      ws.connect(wf); wf.connect(wg); wg.connect(ambientGain);
+      wg.gain.value = 0.18;
+      // Ondulação lenta
+      const lfo = AC.createOscillator(), lfoG = AC.createGain();
+      lfo.type = 'sine'; lfo.frequency.value = 0.08;
+      lfoG.gain.value = 0.08;
+      lfo.connect(lfoG); lfoG.connect(wg.gain);
+      ws.start(); lfo.start();
+      continuousNodes.push(ws, lfo);
+    }
+    // Ressonância subaquática contínua
+    const drone = AC.createOscillator(), dg = AC.createGain();
+    drone.type = 'sine'; drone.frequency.value = 85;
+    dg.gain.value = 0.025;
+    drone.connect(dg); dg.connect(ambientGain);
+    drone.start(); continuousNodes.push(drone);
+  } else if (ph === 3) {
+    // Cidade: chuva (white noise filtrado)
+    const rainBuf = createNoiseBuffer(3, 'white');
+    if (rainBuf) {
+      const rs = AC.createBufferSource(), rf = AC.createBiquadFilter(), rg = AC.createGain();
+      rs.buffer = rainBuf; rs.loop = true;
+      rf.type = 'highpass'; rf.frequency.value = 2000; rf.Q.value = 0.3;
+      rs.connect(rf); rf.connect(rg); rg.connect(ambientGain);
+      rg.gain.value = 0.08;
+      rs.start(); continuousNodes.push(rs);
+    }
+    // Vento urbano
+    const windBuf = createNoiseBuffer(4, 'pink');
+    if (windBuf) {
+      const ws = AC.createBufferSource(), wf = AC.createBiquadFilter(), wg = AC.createGain();
+      ws.buffer = windBuf; ws.loop = true;
+      wf.type = 'bandpass'; wf.frequency.value = 400; wf.Q.value = 0.5;
+      ws.connect(wf); wf.connect(wg); wg.connect(ambientGain);
+      wg.gain.value = 0.06;
+      const lfo = AC.createOscillator(), lfoG = AC.createGain();
+      lfo.type = 'sine'; lfo.frequency.value = 0.25;
+      lfoG.gain.value = 200;
+      lfo.connect(lfoG); lfoG.connect(wf.frequency);
+      ws.start(); lfo.start();
+      continuousNodes.push(ws, lfo);
+    }
+    // Drone elétrico da cidade
+    const hum = AC.createOscillator(), hg = AC.createGain();
+    hum.type = 'sawtooth'; hum.frequency.value = 60;
+    hg.gain.value = 0.012;
+    hum.connect(hg); hg.connect(ambientGain);
+    hum.start(); continuousNodes.push(hum);
+  } else if (ph === 4) {
+    // Espaço: drone cósmico profundo + radiação (noise muito filtrado)
+    const drone1 = AC.createOscillator(), dg1 = AC.createGain();
+    drone1.type = 'sine'; drone1.frequency.value = 40;
+    dg1.gain.value = 0.035;
+    drone1.connect(dg1); dg1.connect(ambientGain);
+    // Vibrato lento
+    const vib = AC.createOscillator(), vibG = AC.createGain();
+    vib.type = 'sine'; vib.frequency.value = 0.05;
+    vibG.gain.value = 3;
+    vib.connect(vibG); vibG.connect(drone1.frequency);
+    drone1.start(); vib.start();
+    continuousNodes.push(drone1, vib);
+    // Harmônico de quinta
+    const drone2 = AC.createOscillator(), dg2 = AC.createGain();
+    drone2.type = 'sine'; drone2.frequency.value = 60;
+    dg2.gain.value = 0.015;
+    drone2.connect(dg2); dg2.connect(ambientGain);
+    drone2.start(); continuousNodes.push(drone2);
+    // Radiação cósmica (noise agudo esparso)
+    const radBuf = createNoiseBuffer(3, 'white');
+    if (radBuf) {
+      const rs = AC.createBufferSource(), rf = AC.createBiquadFilter(), rg = AC.createGain();
+      rs.buffer = radBuf; rs.loop = true;
+      rf.type = 'bandpass'; rf.frequency.value = 6000; rf.Q.value = 20;
+      rs.connect(rf); rf.connect(rg); rg.connect(ambientGain);
+      rg.gain.value = 0.015;
+      rs.start(); continuousNodes.push(rs);
+    }
+  } else {
+    // Vulcão: rumble profundo + chiado de vapor
+    const rumbleBuf = createNoiseBuffer(4, 'brown');
+    if (rumbleBuf) {
+      const rs = AC.createBufferSource(), rf = AC.createBiquadFilter(), rg = AC.createGain();
+      rs.buffer = rumbleBuf; rs.loop = true;
+      rf.type = 'lowpass'; rf.frequency.value = 120; rf.Q.value = 2;
+      rs.connect(rf); rf.connect(rg); rg.connect(ambientGain);
+      rg.gain.value = 0.22;
+      // Pulso de lava
+      const lfo = AC.createOscillator(), lfoG = AC.createGain();
+      lfo.type = 'sine'; lfo.frequency.value = 0.3;
+      lfoG.gain.value = 0.10;
+      lfo.connect(lfoG); lfoG.connect(rg.gain);
+      rs.start(); lfo.start();
+      continuousNodes.push(rs, lfo);
+    }
+    // Chiado de vapor
+    const steamBuf = createNoiseBuffer(2, 'white');
+    if (steamBuf) {
+      const ss = AC.createBufferSource(), sf2 = AC.createBiquadFilter(), sg = AC.createGain();
+      ss.buffer = steamBuf; ss.loop = true;
+      sf2.type = 'bandpass'; sf2.frequency.value = 3000; sf2.Q.value = 3;
+      ss.connect(sf2); sf2.connect(sg); sg.connect(ambientGain);
+      sg.gain.value = 0.04;
+      ss.start(); continuousNodes.push(ss);
+    }
+    // Drone de calor
+    const heat = AC.createOscillator(), hg = AC.createGain();
+    heat.type = 'sawtooth'; heat.frequency.value = 55;
+    hg.gain.value = 0.02;
+    heat.connect(hg); hg.connect(ambientGain);
+    heat.start(); continuousNodes.push(heat);
+  }
+}
+
+// ── SFX AMBIENTAIS ALEATÓRIOS ─────────────────────────────────
+function startEnvSfx(ph, id) {
+  if (!AC || ambPhaseId !== id) return;
+
+  function scheduleNext() {
+    if (ambPhaseId !== id) return;
+    playEnvSfx(ph);
+    const delay = ph === 1 ? 2000+Math.random()*4000 :
+                  ph === 2 ? 1500+Math.random()*3000 :
+                  ph === 3 ? 800+Math.random()*3500 :
+                  ph === 4 ? 4000+Math.random()*6000 :
+                             1000+Math.random()*2500;
+    sfxTimers.push(setTimeout(() => scheduleNext(), delay));
+  }
+  sfxTimers.push(setTimeout(() => scheduleNext(), 1500));
+}
+
+function playEnvSfx(ph) {
+  if (!AC) return;
+  const t = AC.currentTime;
+
+  if (ph === 1) {
+    // Sons aleatórios: coruja, sapo, galho quebrando
+    const r = Math.random();
+    if (r < 0.35) {
+      // Coruja: dois tons descendentes
+      [0, 0.35].forEach((d, i) => {
+        const o = AC.createOscillator(), g = AC.createGain();
+        o.connect(g); g.connect(ambientGain);
+        if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.6; o.connect(rg); rg.connect(reverbNode); }
+        o.type = 'sine'; o.frequency.setValueAtTime(i===0?520:440, t+d);
+        o.frequency.exponentialRampToValueAtTime(i===0?480:380, t+d+0.3);
+        g.gain.setValueAtTime(0, t+d);
+        g.gain.linearRampToValueAtTime(0.06, t+d+0.05);
+        g.gain.linearRampToValueAtTime(0.06, t+d+0.2);
+        g.gain.linearRampToValueAtTime(0, t+d+0.35);
+        o.start(t+d); o.stop(t+d+0.36);
+      });
+    } else if (r < 0.65) {
+      // Sapo: burst rápido
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.connect(g); g.connect(ambientGain);
+      o.type = 'square';
+      o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(120, t+0.15);
+      g.gain.setValueAtTime(0.04, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.18);
+      o.start(t); o.stop(t+0.2);
+    } else {
+      // Galho quebrando
+      const nb = createNoiseBuffer(0.08, 'white');
+      if (nb) {
+        const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+        ns.buffer = nb; nf.type = 'highpass'; nf.frequency.value = 3000;
+        ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+        ng.gain.setValueAtTime(0.07, t); ng.gain.exponentialRampToValueAtTime(0.001, t+0.06);
+        ns.start(t); ns.stop(t+0.08);
+      }
+    }
+  } else if (ph === 2) {
+    // Bolhas, baleia, ping de sonar
+    const r = Math.random();
+    if (r < 0.4) {
+      // Bolhas: série de pops agudos
+      const count = 3 + Math.floor(Math.random()*5);
+      for (let i = 0; i < count; i++) {
+        const d = i * (0.06 + Math.random()*0.08);
+        const o = AC.createOscillator(), g = AC.createGain();
+        o.connect(g); g.connect(ambientGain);
+        o.type = 'sine';
+        const f = 800 + Math.random()*1200;
+        o.frequency.setValueAtTime(f, t+d);
+        o.frequency.exponentialRampToValueAtTime(f*1.8, t+d+0.03);
+        g.gain.setValueAtTime(0.035, t+d); g.gain.exponentialRampToValueAtTime(0.001, t+d+0.04);
+        o.start(t+d); o.stop(t+d+0.05);
+      }
+    } else if (r < 0.7) {
+      // Canto de baleia: glissando lento
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.connect(g); g.connect(ambientGain);
+      if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.7; o.connect(rg); rg.connect(reverbNode); }
+      o.type = 'sine';
+      const baseF = 180 + Math.random()*120;
+      o.frequency.setValueAtTime(baseF, t);
+      o.frequency.linearRampToValueAtTime(baseF*1.6, t+0.8);
+      o.frequency.linearRampToValueAtTime(baseF*0.8, t+2.0);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.04, t+0.3);
+      g.gain.linearRampToValueAtTime(0.04, t+1.5);
+      g.gain.linearRampToValueAtTime(0, t+2.2);
+      o.start(t); o.stop(t+2.3);
+    } else {
+      // Sonar ping
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.connect(g); g.connect(ambientGain);
+      if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.8; o.connect(rg); rg.connect(reverbNode); }
+      o.type = 'sine'; o.frequency.value = 1200;
+      g.gain.setValueAtTime(0.06, t); g.gain.exponentialRampToValueAtTime(0.001, t+1.2);
+      o.start(t); o.stop(t+1.3);
+    }
+  } else if (ph === 3) {
+    // Trovão, sirene distante, goteiras
+    const r = Math.random();
+    if (r < 0.3) {
+      // Trovão: noise com envelope dramático
+      const nb = createNoiseBuffer(2.5, 'brown');
+      if (nb) {
+        const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+        ns.buffer = nb; nf.type = 'lowpass'; nf.frequency.value = 250;
+        ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+        if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.5; nf.connect(rg); rg.connect(reverbNode); }
+        ng.gain.setValueAtTime(0, t);
+        ng.gain.linearRampToValueAtTime(0.20, t+0.05);
+        ng.gain.linearRampToValueAtTime(0.12, t+0.3);
+        ng.gain.linearRampToValueAtTime(0.06, t+1.0);
+        ng.gain.exponentialRampToValueAtTime(0.001, t+2.3);
+        ns.start(t); ns.stop(t+2.5);
+      }
+    } else if (r < 0.55) {
+      // Sirene distante
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.connect(g); g.connect(ambientGain);
+      o.type = 'sine';
+      const lfo = AC.createOscillator(), lfoG = AC.createGain();
+      lfo.type = 'sine'; lfo.frequency.value = 1.5;
+      lfoG.gain.value = 80;
+      lfo.connect(lfoG); lfoG.connect(o.frequency);
+      o.frequency.value = 600;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.02, t+0.5);
+      g.gain.linearRampToValueAtTime(0.02, t+2.5);
+      g.gain.linearRampToValueAtTime(0, t+3.5);
+      o.start(t); lfo.start(t);
+      o.stop(t+3.6); lfo.stop(t+3.6);
+    } else {
+      // Goteira: pings metálicos
+      const count = 1 + Math.floor(Math.random()*3);
+      for (let i = 0; i < count; i++) {
+        const d = i * (0.3 + Math.random()*0.5);
+        const o = AC.createOscillator(), g = AC.createGain();
+        o.connect(g); g.connect(ambientGain);
+        if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.9; o.connect(rg); rg.connect(reverbNode); }
+        o.type = 'sine';
+        o.frequency.setValueAtTime(2800+Math.random()*800, t+d);
+        o.frequency.exponentialRampToValueAtTime(1200, t+d+0.08);
+        g.gain.setValueAtTime(0.05, t+d); g.gain.exponentialRampToValueAtTime(0.001, t+d+0.15);
+        o.start(t+d); o.stop(t+d+0.16);
+      }
+    }
+  } else if (ph === 4) {
+    // Pulsar, interferência de rádio, eco cósmico
+    const r = Math.random();
+    if (r < 0.35) {
+      // Pulsar: beeps rítmicos
+      const count = 4 + Math.floor(Math.random()*6);
+      const interval = 0.12 + Math.random()*0.08;
+      for (let i = 0; i < count; i++) {
+        const d = i * interval;
+        const o = AC.createOscillator(), g = AC.createGain();
+        o.connect(g); g.connect(ambientGain);
+        o.type = 'sine'; o.frequency.value = 1400 + Math.random()*200;
+        g.gain.setValueAtTime(0.03, t+d); g.gain.exponentialRampToValueAtTime(0.001, t+d+0.03);
+        o.start(t+d); o.stop(t+d+0.04);
+      }
+    } else if (r < 0.65) {
+      // Interferência de rádio
+      const nb = createNoiseBuffer(0.6, 'white');
+      if (nb) {
+        const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+        ns.buffer = nb; nf.type = 'bandpass'; nf.frequency.value = 3000+Math.random()*3000; nf.Q.value = 30;
+        ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+        ng.gain.setValueAtTime(0, t);
+        ng.gain.linearRampToValueAtTime(0.04, t+0.05);
+        ng.gain.linearRampToValueAtTime(0.02, t+0.3);
+        ng.gain.linearRampToValueAtTime(0, t+0.55);
+        ns.start(t); ns.stop(t+0.6);
+      }
+    } else {
+      // Eco cósmico: nota reverberada longa
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.connect(g); g.connect(ambientGain);
+      if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.9; o.connect(rg); rg.connect(reverbNode); }
+      o.type = 'sine'; o.frequency.value = 200 + Math.random()*300;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.03, t+0.8);
+      g.gain.linearRampToValueAtTime(0, t+3.0);
+      o.start(t); o.stop(t+3.1);
+    }
+  } else {
+    // Vulcão: explosão de lava, rocha caindo, jato de vapor
+    const r = Math.random();
+    if (r < 0.35) {
+      // Explosão de lava
+      const nb = createNoiseBuffer(1.0, 'brown');
+      if (nb) {
+        const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+        ns.buffer = nb; nf.type = 'lowpass'; nf.frequency.value = 300;
+        nf.frequency.setValueAtTime(300, t);
+        nf.frequency.exponentialRampToValueAtTime(80, t+0.8);
+        ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+        ng.gain.setValueAtTime(0.18, t);
+        ng.gain.exponentialRampToValueAtTime(0.001, t+0.9);
+        ns.start(t); ns.stop(t+1.0);
+      }
+    } else if (r < 0.6) {
+      // Rocha caindo: impactos
+      const count = 2 + Math.floor(Math.random()*3);
+      for (let i = 0; i < count; i++) {
+        const d = i * (0.15 + Math.random()*0.2);
+        const nb = createNoiseBuffer(0.1, 'brown');
+        if (nb) {
+          const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+          ns.buffer = nb; nf.type = 'lowpass'; nf.frequency.value = 500 - i*80;
+          ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+          ng.gain.setValueAtTime(0.07 - i*0.01, t+d);
+          ng.gain.exponentialRampToValueAtTime(0.001, t+d+0.08);
+          ns.start(t+d); ns.stop(t+d+0.1);
+        }
+      }
+    } else {
+      // Jato de vapor
+      const nb = createNoiseBuffer(0.6, 'white');
+      if (nb) {
+        const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+        ns.buffer = nb; nf.type = 'bandpass'; nf.frequency.value = 4000; nf.Q.value = 5;
+        ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+        ng.gain.setValueAtTime(0.10, t);
+        ng.gain.exponentialRampToValueAtTime(0.001, t+0.5);
+        ns.start(t); ns.stop(t+0.6);
+      }
+    }
+  }
+}
+
+// ── MELODIAS AMBIENTAIS POR FASE ──────────────────────────────
 function ambPhase1(id) {
   if (!AC || ambPhaseId !== id) return;
-  // Pentatônica de Dó maior: C4 E4 G4 A4 C5 A4 G4 E4
   const scale = [261.6, 329.6, 392, 440, 523.3, 440, 392, 329.6];
   const freq = scale[(ambPhase1.i||0) % scale.length];
-  // Nota principal — sine suave com fade in/out
   const o = AC.createOscillator(), g = AC.createGain();
-  o.connect(g); g.connect(masterVol);
+  o.connect(g); g.connect(ambientGain);
+  if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.5; o.connect(rg); rg.connect(reverbNode); }
   o.type = 'sine'; o.frequency.value = freq;
   const dur = 1.6;
   g.gain.setValueAtTime(0, AC.currentTime);
@@ -2079,9 +2580,8 @@ function ambPhase1(id) {
   g.gain.linearRampToValueAtTime(0.038, AC.currentTime + dur - 0.5);
   g.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
   o.start(); o.stop(AC.currentTime + dur + 0.1);
-  // Sub-oitava suave para corpo
   const o2 = AC.createOscillator(), g2 = AC.createGain();
-  o2.connect(g2); g2.connect(masterVol);
+  o2.connect(g2); g2.connect(ambientGain);
   o2.type = 'sine'; o2.frequency.value = freq * 0.5;
   g2.gain.setValueAtTime(0, AC.currentTime);
   g2.gain.linearRampToValueAtTime(0.016, AC.currentTime + 0.5);
@@ -2091,16 +2591,13 @@ function ambPhase1(id) {
   ambTimer = setTimeout(() => ambPhase1(id), 1200 + Math.random() * 2800);
 }
 
-// Fase 2: melodia mais misteriosa — pentatônica menor, pausas longas
 function ambPhase2(id) {
   if (!AC || ambPhaseId !== id) return;
-  // Pentatônica de Lá menor: A3 C4 D4 E4 G4 E4 D4 C4
   const scale = [220, 261.6, 293.7, 329.6, 392, 329.6, 293.7, 261.6];
   const freq = scale[(ambPhase2.i||0) % scale.length];
-  // A cada 5 notas toca um drone grave longo
   if ((ambPhase2.i||0) % 5 === 0) {
     const od = AC.createOscillator(), gd = AC.createGain();
-    od.connect(gd); gd.connect(masterVol);
+    od.connect(gd); gd.connect(ambientGain);
     od.type = 'sine'; od.frequency.value = 110;
     gd.gain.setValueAtTime(0, AC.currentTime);
     gd.gain.linearRampToValueAtTime(0.022, AC.currentTime + 0.8);
@@ -2109,7 +2606,8 @@ function ambPhase2(id) {
     od.start(); od.stop(AC.currentTime + 3.9);
   }
   const o = AC.createOscillator(), g = AC.createGain();
-  o.connect(g); g.connect(masterVol);
+  o.connect(g); g.connect(ambientGain);
+  if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.6; o.connect(rg); rg.connect(reverbNode); }
   o.type = 'sine'; o.frequency.value = freq;
   const dur = 1.8;
   g.gain.setValueAtTime(0, AC.currentTime);
@@ -2121,15 +2619,12 @@ function ambPhase2(id) {
   ambTimer = setTimeout(() => ambPhase2(id), 1500 + Math.random() * 3000);
 }
 
-// Fase 3 — Escala cromática/diminuta, caverna de cristal sombria
 function ambPhase3(id) {
   if (!AC || ambPhaseId !== id) return;
-  // Escala diminuta sombria em registro médio-grave
   const scale = [130.8, 155.6, 174.6, 207.7, 155.6, 130.8, 146.8, 196.0];
   const freq = scale[(ambPhase3.i||0) % scale.length];
-  // Nota principal — triangle, mais escura
   const o = AC.createOscillator(), g = AC.createGain();
-  o.connect(g); g.connect(masterVol);
+  o.connect(g); g.connect(ambientGain);
   o.type = 'triangle'; o.frequency.value = freq;
   const dur = 2.2;
   g.gain.setValueAtTime(0, AC.currentTime);
@@ -2137,48 +2632,33 @@ function ambPhase3(id) {
   g.gain.linearRampToValueAtTime(0.034, AC.currentTime + dur - 0.65);
   g.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
   o.start(); o.stop(AC.currentTime + dur + 0.1);
-  // Sub-oitava para profundidade
   const o2 = AC.createOscillator(), g2 = AC.createGain();
-  o2.connect(g2); g2.connect(masterVol);
+  o2.connect(g2); g2.connect(ambientGain);
   o2.type = 'sine'; o2.frequency.value = freq * 0.5;
   g2.gain.setValueAtTime(0, AC.currentTime);
   g2.gain.linearRampToValueAtTime(0.018, AC.currentTime + 0.7);
   g2.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
   o2.start(); o2.stop(AC.currentTime + dur);
-  // Faísca elétrica a cada 3 notas
   if ((ambPhase3.i||0) % 3 === 0) {
     const te = AC.currentTime + 0.05 + Math.random()*0.12;
     const oe = AC.createOscillator(), ge = AC.createGain();
-    oe.connect(ge); ge.connect(masterVol);
+    oe.connect(ge); ge.connect(ambientGain);
     oe.type = 'square'; oe.frequency.value = 600 + Math.random()*600;
     ge.gain.setValueAtTime(0.055, te);
     ge.gain.exponentialRampToValueAtTime(0.0001, te + 0.10);
     oe.start(te); oe.stop(te + 0.11);
   }
-  // Drone grave contínuo a cada 6 notas
-  if ((ambPhase3.i||0) % 6 === 0) {
-    const od = AC.createOscillator(), gd = AC.createGain();
-    od.connect(gd); gd.connect(masterVol);
-    od.type = 'sine'; od.frequency.value = 65.4;
-    gd.gain.setValueAtTime(0, AC.currentTime);
-    gd.gain.linearRampToValueAtTime(0.022, AC.currentTime + 1.0);
-    gd.gain.linearRampToValueAtTime(0.022, AC.currentTime + 3.2);
-    gd.gain.linearRampToValueAtTime(0, AC.currentTime + 4.2);
-    od.start(); od.stop(AC.currentTime + 4.3);
-  }
   ambPhase3.i = (ambPhase3.i||0) + 1;
   ambTimer = setTimeout(() => ambPhase3(id), 1800 + Math.random() * 2200);
 }
 
-// Fase 4 — Escala pentatônica muito grave, sparse, flotando no espaço
 function ambPhase4(id) {
   if (!AC || ambPhaseId !== id) return;
-  // Pentatônica aberta em registro muito grave — floating in void
   const scale = [65.4, 98.0, 130.8, 146.8, 196.0, 130.8, 98.0, 65.4];
   const freq = scale[(ambPhase4.i||0) % scale.length];
-  // Nota principal — sine, ataque muito lento
   const o = AC.createOscillator(), g = AC.createGain();
-  o.connect(g); g.connect(masterVol);
+  o.connect(g); g.connect(ambientGain);
+  if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.7; o.connect(rg); rg.connect(reverbNode); }
   o.type = 'sine'; o.frequency.value = freq;
   const dur = 3.8;
   g.gain.setValueAtTime(0, AC.currentTime);
@@ -2186,18 +2666,16 @@ function ambPhase4(id) {
   g.gain.linearRampToValueAtTime(0.026, AC.currentTime + dur - 1.2);
   g.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
   o.start(); o.stop(AC.currentTime + dur + 0.1);
-  // Harmônico de quinta (freq*1.5) — sensação de vastidão
   const o2 = AC.createOscillator(), g2 = AC.createGain();
-  o2.connect(g2); g2.connect(masterVol);
+  o2.connect(g2); g2.connect(ambientGain);
   o2.type = 'sine'; o2.frequency.value = freq * 1.498;
   g2.gain.setValueAtTime(0, AC.currentTime);
   g2.gain.linearRampToValueAtTime(0.010, AC.currentTime + 1.8);
   g2.gain.linearRampToValueAtTime(0, AC.currentTime + dur * 0.7);
   o2.start(); o2.stop(AC.currentTime + dur);
-  // Pulso cósmico a cada 4 notas — baixo profundo longo
   if ((ambPhase4.i||0) % 4 === 0) {
     const op = AC.createOscillator(), gp = AC.createGain();
-    op.connect(gp); gp.connect(masterVol);
+    op.connect(gp); gp.connect(ambientGain);
     op.type = 'sine'; op.frequency.value = 32.7;
     gp.gain.setValueAtTime(0, AC.currentTime);
     gp.gain.linearRampToValueAtTime(0.030, AC.currentTime + 1.5);
@@ -2209,15 +2687,12 @@ function ambPhase4(id) {
   ambTimer = setTimeout(() => ambPhase4(id), 3200 + Math.random() * 3800);
 }
 
-// Fase 5 — Escala frígia agressiva, ritmo rápido, sawtooth tenso
 function ambPhase5(id) {
   if (!AC || ambPhaseId !== id) return;
-  // Escala frígia em A (tensão máxima)
   const scale = [110, 116.5, 130.8, 146.8, 110, 98.0, 110, 123.5];
   const freq = scale[(ambPhase5.i||0) % scale.length];
-  // Nota principal — sawtooth agressivo, attack rápido
   const o = AC.createOscillator(), g = AC.createGain();
-  o.connect(g); g.connect(masterVol);
+  o.connect(g); g.connect(ambientGain);
   o.type = 'sawtooth'; o.frequency.value = freq;
   const dur = 1.1;
   g.gain.setValueAtTime(0, AC.currentTime);
@@ -2225,30 +2700,27 @@ function ambPhase5(id) {
   g.gain.linearRampToValueAtTime(0.030, AC.currentTime + dur - 0.28);
   g.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
   o.start(); o.stop(AC.currentTime + dur + 0.05);
-  // Pulso de baixo grave — lava pulsante (a cada nota)
   const ob = AC.createOscillator(), gb = AC.createGain();
-  ob.connect(gb); gb.connect(masterVol);
-  ob.type = 'sine'; ob.frequency.value = 55; // A1
+  ob.connect(gb); gb.connect(ambientGain);
+  ob.type = 'sine'; ob.frequency.value = 55;
   gb.gain.setValueAtTime(0, AC.currentTime);
   gb.gain.linearRampToValueAtTime(0.040, AC.currentTime + 0.07);
   gb.gain.linearRampToValueAtTime(0.040, AC.currentTime + 0.55);
   gb.gain.linearRampToValueAtTime(0, AC.currentTime + 0.88);
   ob.start(); ob.stop(AC.currentTime + 0.92);
-  // Harmônico de terça menor a cada 2 notas (dissonância)
   if ((ambPhase5.i||0) % 2 === 0) {
     const oh = AC.createOscillator(), gh = AC.createGain();
-    oh.connect(gh); gh.connect(masterVol);
+    oh.connect(gh); gh.connect(ambientGain);
     oh.type = 'triangle'; oh.frequency.value = freq * 1.189;
     gh.gain.setValueAtTime(0, AC.currentTime);
     gh.gain.linearRampToValueAtTime(0.018, AC.currentTime + 0.18);
     gh.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
     oh.start(); oh.stop(AC.currentTime + dur + 0.04);
   }
-  // Sub-grave de lava a cada 4 notas (rumble profundo)
   if ((ambPhase5.i||0) % 4 === 0) {
     const os = AC.createOscillator(), gs = AC.createGain();
-    os.connect(gs); gs.connect(masterVol);
-    os.type = 'sine'; os.frequency.value = 27.5; // A0
+    os.connect(gs); gs.connect(ambientGain);
+    os.type = 'sine'; os.frequency.value = 27.5;
     gs.gain.setValueAtTime(0, AC.currentTime);
     gs.gain.linearRampToValueAtTime(0.028, AC.currentTime + 0.3);
     gs.gain.linearRampToValueAtTime(0.028, AC.currentTime + 1.8);
