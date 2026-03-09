@@ -3632,7 +3632,7 @@ function playEnvSfx(ph) {
       g.gain.linearRampToValueAtTime(0, t+2.2);
       o.start(t); o.stop(t+2.3);
     }
-  } else {
+  } else if (ph === 7) {
     // Fase 7 — Cemitério: corvos grasnando, ossos estalando, gemidos, terra sendo cavada
     const r = Math.random();
     if (r < 0.3) {
