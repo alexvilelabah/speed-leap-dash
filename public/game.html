@@ -2646,8 +2646,8 @@ function sfxJump() {
   const o = AC.createOscillator(), g = AC.createGain();
   o.connect(g); g.connect(masterVol);
   if (reverbNode) { const g2 = AC.createGain(); g2.gain.value = 0.3; o.connect(g2); g2.connect(reverbNode); }
-  o.type = (['square','triangle','sine','sine','sawtooth'])[Math.min(ph-1,4)];
-  const [f1,f2] = ([[160,640],[150,460],[130,370],[110,290],[95,240]])[Math.min(ph-1,4)];
+  o.type = (['square','triangle','sine','sine','sawtooth','sawtooth','square'])[Math.min(ph-1,6)];
+  const [f1,f2] = ([[160,640],[150,460],[130,370],[110,290],[95,240],[85,200],[75,180]])[Math.min(ph-1,6)];
   o.frequency.setValueAtTime(f1, AC.currentTime);
   o.frequency.exponentialRampToValueAtTime(f2, AC.currentTime + 0.08);
   g.gain.setValueAtTime(0.11, AC.currentTime);
