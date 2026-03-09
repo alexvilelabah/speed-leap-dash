@@ -2030,7 +2030,218 @@ function drawBG() {
     ctx.fillStyle=ground; ctx.fillRect(0,H*0.82,W,H*0.18);
   }
 
-  // -- Vinheta leve nas bordas (todas as fases) --
+  // ===============================================================
+  //  FASE 8 — Cyberpunk Blade Runner
+  // ===============================================================
+  else if (phase === 8) {
+    // Céu noturno púrpura/laranja poluído
+    const sky=ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'#05020a'); sky.addColorStop(0.25,'#0a0418'); sky.addColorStop(0.5,'#120620'); sky.addColorStop(0.7,'#1a0825'); sky.addColorStop(1,'#0d0412');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+
+    // Chuva intensa neon
+    ctx.save();
+    for (let i=0; i<200; i++) {
+      const rx = (d_s(i*53)*W*2 + T*80*(1+d_s(i*53+3)*0.5) + (-camX)*0.3) % (W+100) - 50;
+      const ry = (d_s(i*53+1)*H*1.5 + T*180*(1+d_s(i*53+4)*0.3)) % (H+40) - 20;
+      const rl = 8 + d_s(i*53+2)*18;
+      const rainHue = [280,200,320,180][i%4];
+      ctx.globalAlpha = 0.15 + d_s(i*53+5)*0.15;
+      ctx.strokeStyle = `hsl(${rainHue},80%,65%)`;
+      ctx.lineWidth = 0.5 + d_s(i*53+6)*0.5;
+      ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx-2, ry+rl); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Skyline de arranha-céus distantes (parallax lento)
+    const offSky = (-camX)*0.02;
+    for (let i=0; i<25; i++) {
+      const bx = ((d_s(i*37)*3000 + offSky) % 3000) / 3000 * W;
+      if (bx < -80 || bx > W+80) continue;
+      const bw = 30 + d_s(i*37+1)*50;
+      const bh = 120 + d_s(i*37+2)*200;
+      const by = H*0.85 - bh;
+      // Edifício
+      ctx.fillStyle = `rgba(${5+d_s(i*37+3)*10},${3+d_s(i*37+4)*6},${12+d_s(i*37+5)*15},0.9)`;
+      ctx.fillRect(bx, by, bw, bh);
+      // Janelas neon
+      const windowRows = Math.floor(bh/12);
+      const windowCols = Math.floor(bw/8);
+      for (let wy=0; wy<windowRows; wy++) {
+        for (let wx=0; wx<windowCols; wx++) {
+          if (d_s(i*37+wy*10+wx) > 0.4) continue;
+          const wHue = [280,330,200,50,180][Math.floor(d_s(i*37+wy+wx+6)*5)];
+          const flicker = 0.3 + 0.5*d_s(i*37+wy+wx+7) + 0.2*Math.sin(T*2+i+wy*0.5);
+          ctx.fillStyle = `hsla(${wHue},90%,60%,${flicker})`;
+          ctx.fillRect(bx+3+wx*8, by+3+wy*12, 4, 6);
+        }
+      }
+    }
+
+    // Edifícios médios (parallax 0.06)
+    const offMid = (-camX)*0.06;
+    for (let i=0; i<15; i++) {
+      const bx = ((d_s(i*43)*4000 + offMid) % 4000) / 4000 * W;
+      if (bx < -100 || bx > W+100) continue;
+      const bw = 50 + d_s(i*43+1)*70;
+      const bh = 100 + d_s(i*43+2)*160;
+      const by = H*0.85 - bh;
+      ctx.fillStyle = `rgba(${8+d_s(i*43+3)*8},${4+d_s(i*43+4)*5},${15+d_s(i*43+5)*12},0.95)`;
+      ctx.fillRect(bx, by, bw, bh);
+      // Janelas
+      const wr = Math.floor(bh/14);
+      const wc = Math.floor(bw/10);
+      for (let wy=0; wy<wr; wy++) {
+        for (let wx=0; wx<wc; wx++) {
+          if (d_s(i*43+wy*10+wx+6) > 0.5) continue;
+          const wHue = [300,180,50,330][Math.floor(d_s(i*43+wy+wx+8)*4)];
+          ctx.fillStyle = `hsla(${wHue},85%,55%,${0.4+0.4*Math.sin(T*1.5+i+wx)})`;
+          ctx.fillRect(bx+4+wx*10, by+4+wy*14, 5, 8);
+        }
+      }
+    }
+
+    // POSTERS GIGANTES estilo Blade Runner (holográficos)
+    const offPost = (-camX)*0.08;
+    for (let i=0; i<6; i++) {
+      const px = ((d_s(i*71)*5000 + offPost) % 5000) / 5000 * W;
+      if (px < -120 || px > W+120) continue;
+      const pw = 80 + d_s(i*71+1)*60;
+      const ph8 = 120 + d_s(i*71+2)*80;
+      const py = H*0.15 + d_s(i*71+3)*H*0.25;
+      // Poster background glow
+      const posterHue = [300,180,330,200,50,280][i%6];
+      ctx.save();
+      ctx.globalAlpha = 0.3 + 0.15*Math.sin(T*0.8+i*2);
+      const pg = ctx.createRadialGradient(px+pw/2, py+ph8/2, 0, px+pw/2, py+ph8/2, pw);
+      pg.addColorStop(0, `hsla(${posterHue},90%,50%,0.4)`);
+      pg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = pg;
+      ctx.fillRect(px-20, py-20, pw+40, ph8+40);
+      // Poster frame
+      ctx.globalAlpha = 0.6 + 0.2*Math.sin(T*1.2+i);
+      ctx.fillStyle = `hsla(${posterHue},80%,8%,0.85)`;
+      ctx.fillRect(px, py, pw, ph8);
+      // Poster content — rosto estilizado (silhueta)
+      ctx.fillStyle = `hsla(${posterHue},70%,50%,0.7)`;
+      // Oval do rosto
+      ctx.beginPath();
+      ctx.ellipse(px+pw/2, py+ph8*0.35, pw*0.25, ph8*0.22, 0, 0, Math.PI*2);
+      ctx.fill();
+      // Olhos brilhantes
+      ctx.fillStyle = `hsla(${posterHue},100%,75%,${0.7+0.3*Math.sin(T*3+i)})`;
+      ctx.beginPath(); ctx.arc(px+pw*0.38, py+ph8*0.33, 3, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(px+pw*0.62, py+ph8*0.33, 3, 0, Math.PI*2); ctx.fill();
+      // Texto neon — caracteres japoneses fake
+      const chars = ['ネ','オ','ン','夜','光','都','市','闇'];
+      ctx.fillStyle = `hsla(${posterHue},90%,70%,${0.5+0.3*Math.sin(T*2+i)})`;
+      ctx.font = `bold ${8+d_s(i*71+4)*8}px sans-serif`;
+      for (let c=0; c<3; c++) {
+        const ch = chars[Math.floor(d_s(i*71+5+c)*chars.length)];
+        ctx.fillText(ch, px+10+c*pw*0.3, py+ph8*0.75+d_s(i*71+8+c)*15);
+      }
+      // Scan lines no poster
+      ctx.globalAlpha = 0.08;
+      for (let sl=0; sl<ph8; sl+=2) {
+        ctx.fillStyle = 'rgba(0,0,0,1)';
+        ctx.fillRect(px, py+sl, pw, 1);
+      }
+      ctx.restore();
+    }
+
+    // Carros voadores (flying spinners)
+    for (let i=0; i<8; i++) {
+      const speed = 30 + d_s(i*61)*60;
+      const dir = d_s(i*61+5) > 0.5 ? 1 : -1;
+      const cx8 = ((d_s(i*61)*W*3 + T*speed*dir) % (W+200)) - 100;
+      const cy8 = H*0.08 + d_s(i*61+1)*H*0.35;
+      const carHue = [0,30,200,280,180][i%5];
+      // Corpo do carro
+      ctx.save();
+      ctx.globalAlpha = 0.6 + 0.2*d_s(i*61+2);
+      ctx.fillStyle = `hsl(${carHue},70%,15%)`;
+      ctx.fillRect(cx8-12, cy8-3, 24, 6);
+      ctx.fillStyle = `hsl(${carHue},80%,25%)`;
+      ctx.fillRect(cx8-8, cy8-5, 16, 4);
+      // Luzes traseiras/dianteiras
+      ctx.fillStyle = dir > 0 ? `hsla(0,100%,60%,${0.6+0.4*Math.sin(T*5+i)})` : `hsla(50,100%,70%,${0.6+0.4*Math.sin(T*5+i)})`;
+      ctx.beginPath(); ctx.arc(cx8 + dir*14, cy8, 2.5, 0, Math.PI*2); ctx.fill();
+      // Trail de luz
+      ctx.globalAlpha = 0.15;
+      const tg = ctx.createLinearGradient(cx8-dir*60, cy8, cx8-dir*5, cy8);
+      tg.addColorStop(0, 'rgba(0,0,0,0)');
+      tg.addColorStop(1, `hsla(${dir>0?0:50},100%,50%,0.5)`);
+      ctx.fillStyle = tg;
+      ctx.fillRect(cx8-dir*60, cy8-1, 55, 2);
+      ctx.restore();
+    }
+
+    // Neon signs flutuantes
+    ctx.save();
+    const offNeon = (-camX)*0.1;
+    for (let i=0; i<10; i++) {
+      const nx = ((d_s(i*83)*6000 + offNeon) % 6000) / 6000 * W;
+      if (nx < -60 || nx > W+60) continue;
+      const ny = H*0.55 + d_s(i*83+1)*H*0.2;
+      const nHue = [300,180,50,330,200,0,280,120,340,30][i];
+      const flicker = Math.sin(T*4+i*3) > 0.7 ? 0.2 : 1.0; // Flickering
+      ctx.globalAlpha = (0.5 + 0.3*Math.sin(T*1.5+i)) * flicker;
+      // Glow
+      const ng = ctx.createRadialGradient(nx, ny, 0, nx, ny, 30);
+      ng.addColorStop(0, `hsla(${nHue},100%,60%,0.5)`);
+      ng.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = ng;
+      ctx.beginPath(); ctx.arc(nx, ny, 30, 0, Math.PI*2); ctx.fill();
+      // Texto neon
+      const signs = ['BAR','HOTEL','24H','OPEN','酒','薬','夢','闇','LIVE','EXIT'];
+      ctx.fillStyle = `hsla(${nHue},100%,70%,0.9)`;
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(signs[i], nx, ny+4);
+      ctx.textAlign = 'left';
+    }
+    ctx.restore();
+
+    // Reflexos no chão molhado
+    ctx.save();
+    ctx.globalAlpha = 0.12 + 0.04*Math.sin(T*0.5);
+    const refG = ctx.createLinearGradient(0, H*0.82, 0, H);
+    refG.addColorStop(0, 'rgba(0,0,0,0)');
+    refG.addColorStop(0.3, 'rgba(180,40,255,0.15)');
+    refG.addColorStop(0.6, 'rgba(0,200,255,0.1)');
+    refG.addColorStop(1, 'rgba(255,50,100,0.08)');
+    ctx.fillStyle = refG;
+    ctx.fillRect(0, H*0.82, W, H*0.18);
+    ctx.restore();
+
+    // Névoa/smog urbano
+    for (let f=0; f<4; f++) {
+      const fogY = H*0.65 + f*H*0.05;
+      ctx.save();
+      ctx.globalAlpha = 0.06 + 0.03*Math.sin(T*0.2+f);
+      const fog = ctx.createLinearGradient(0, fogY, 0, fogY+H*0.1);
+      fog.addColorStop(0, 'rgba(0,0,0,0)');
+      fog.addColorStop(0.5, `rgba(${40+f*10},${10+f*5},${50+f*15},1)`);
+      fog.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = fog;
+      ctx.fillRect(0, fogY, W, H*0.1);
+      ctx.restore();
+    }
+
+    // Chão de asfalto molhado
+    const ground=ctx.createLinearGradient(0,H*0.82,0,H);
+    ground.addColorStop(0,'rgba(0,0,0,0)'); ground.addColorStop(0.3,'rgba(8,4,14,0.92)'); ground.addColorStop(1,'rgba(5,2,10,0.96)');
+    ctx.fillStyle=ground; ctx.fillRect(0,H*0.82,W,H*0.18);
+
+    // Scan lines globais (efeito CRT)
+    ctx.save();
+    ctx.globalAlpha = 0.03;
+    for (let sl=0; sl<H; sl+=3) {
+      ctx.fillStyle = 'rgba(0,0,0,1)';
+      ctx.fillRect(0, sl, W, 1);
+    }
+    ctx.restore();
+  }
   const vign = ctx.createRadialGradient(W/2,H/2,H*0.32,W/2,H/2,H*0.78);
   vign.addColorStop(0,'rgba(0,0,0,0)'); vign.addColorStop(1,'rgba(0,0,0,0.52)');
   ctx.fillStyle=vign; ctx.fillRect(0,0,W,H);
