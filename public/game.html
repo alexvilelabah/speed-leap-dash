@@ -614,6 +614,7 @@ let trailPositions = [];
 let phaseFlashAlpha = 0, phaseFlashColor = '#00e8c8';
 
 function getPhase() {
+  if (player.x >= 52000) return 8;
   if (player.x >= 42000) return 7;
   if (player.x >= 33000) return 6;
   if (player.x >= 23000) return 5;
