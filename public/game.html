@@ -568,12 +568,15 @@ function updatePhysics() {
     }
   }
 
-  // Caiu no buraco → reseta
+  // Caiu no buraco → reseta com efeitos visuais
   if (player.y > H + 100) {
     flashAlpha = 0.9;
+    shakeIntensity = 18; // SCREEN SHAKE na morte
+    chromaticAlpha = 1.0; // ABERRAÇÃO CROMÁTICA na morte
     sfxDeath();
     const ph3 = getPhase(); const spawnX = ph3===5 ? 23100 : ph3===4 ? 15100 : ph3===3 ? 10100 : ph3===2 ? 5100 : 80;
     player.x = spawnX; player.y = 380; player.vx = 0; player.vy = 0;
+    trailPositions = []; // Limpa trail
   }
 }
 
