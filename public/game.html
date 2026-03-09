@@ -3299,6 +3299,36 @@ function startContinuousAmbient(ph, id) {
       ws.start(); slfo.start();
       continuousNodes.push(ws, slfo);
     }
+  } else {
+    // Fase 8 — Cyberpunk: chuva eletrônica + synth pad + buzzing neon
+    const rainBuf = createNoiseBuffer(4, 'pink');
+    if (rainBuf) {
+      const ws = AC.createBufferSource(), wf = AC.createBiquadFilter(), wg = AC.createGain();
+      ws.buffer = rainBuf; ws.loop = true;
+      wf.type = 'highpass'; wf.frequency.value = 3000;
+      ws.connect(wf); wf.connect(wg); wg.connect(ambientGain);
+      wg.gain.value = 0.06;
+      ws.start(); continuousNodes.push(ws);
+    }
+    // Synth pad — acorde menor neon
+    const synthNotes = [130.8, 155.6, 196, 233.1]; // C3, Eb3, G3, Bb3
+    for (const freq of synthNotes) {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = 'sawtooth'; o.frequency.value = freq;
+      const lp = AC.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 400;
+      g.gain.value = 0.012;
+      o.connect(lp); lp.connect(g); g.connect(ambientGain);
+      o.start(); continuousNodes.push(o);
+    }
+    // Buzzing neon elétrico
+    const buzzO = AC.createOscillator(), buzzG = AC.createGain();
+    buzzO.type = 'sawtooth'; buzzO.frequency.value = 60;
+    buzzG.gain.value = 0.008;
+    const buzzF = AC.createBiquadFilter();
+    buzzF.type = 'bandpass'; buzzF.frequency.value = 120; buzzF.Q.value = 8;
+    buzzO.connect(buzzF); buzzF.connect(buzzG); buzzG.connect(ambientGain);
+    buzzO.start(); continuousNodes.push(buzzO);
   }
 }
 
