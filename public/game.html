@@ -561,7 +561,7 @@ function updatePhysics() {
       jumpCount++;
       if (p.type !== 'ground') shakeIntensity = Math.max(shakeIntensity, 3); // Mini shake ao pousar em plataformas
       landingEffects.push({px: p.x, py: p.y, pw: p.w, ht: p.h, cx: player.x + player.w/2, t: 0, ph: getPhase()});
-      sfxJump();
+      sfxJump(); sfxLand();
       break;
     }
     // Bate no teto
