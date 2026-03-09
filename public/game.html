@@ -2840,8 +2840,8 @@ function drawHUD() {
     ctx.save();
     const na = Math.min(1, phaseNotifAlpha);
     ctx.globalAlpha = na * na;
-    const phNames = ['','Floresta Sombria','Oceano Profundo','Cristal Elétrico','Vazio Estelar','Abismo Carmesim','Castelo Assombrado','Cemitério Maldito'];
-    const phColor = ['','rgba(0,230,200,0.95)','rgba(0,180,240,0.95)','rgba(160,80,255,0.95)','rgba(130,190,255,0.95)','rgba(255,80,30,0.95)','rgba(180,50,220,0.95)','rgba(200,20,30,0.95)'];
+    const phNames = ['','Floresta Sombria','Oceano Profundo','Cristal Elétrico','Vazio Estelar','Abismo Carmesim','Castelo Assombrado','Cemitério Maldito','Neon District'];
+    const phColor = ['','rgba(0,230,200,0.95)','rgba(0,180,240,0.95)','rgba(160,80,255,0.95)','rgba(130,190,255,0.95)','rgba(255,80,30,0.95)','rgba(180,50,220,0.95)','rgba(200,20,30,0.95)','rgba(180,40,255,0.95)'];
     ctx.fillStyle = phColor[phase] || 'rgba(0,230,200,0.95)';
     ctx.font = 'bold 38px Georgia'; ctx.textAlign = 'center'; ctx.letterSpacing = '6px';
     ctx.fillText(`✦ FASE ${phase} ✦`, W/2, H/2 - 10);
