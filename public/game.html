@@ -3306,8 +3306,8 @@ function updateSpeedLines() {
 function drawSpeedLines() {
   if (speedLineParticles.length === 0) return;
   const phase = getPhase();
-  const colors = ['rgba(0,220,200,','rgba(60,180,255,','rgba(160,80,255,','rgba(120,180,255,','rgba(255,120,40,'];
-  const col = colors[Math.min(phase-1, 4)];
+  const colors = ['rgba(0,220,200,','rgba(60,180,255,','rgba(160,80,255,','rgba(120,180,255,','rgba(255,120,40,','rgba(180,60,255,'];
+  const col = colors[Math.min(phase-1, 5)];
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
   for (const sl of speedLineParticles) {
