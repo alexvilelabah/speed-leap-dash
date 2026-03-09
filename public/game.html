@@ -3581,6 +3581,44 @@ function ambPhase6(id) {
   ambTimer = setTimeout(() => ambPhase6(id), 1200 + Math.random() * 1800);
 }
 
+function ambPhase7(id) {
+  if (!AC || ambPhaseId !== id) return;
+  // Escala frígia — sombria e funeral
+  const scale = [82.4, 87.3, 98, 110, 123.5, 130.8, 146.8, 130.8];
+  const freq = scale[(ambPhase7.i||0) % scale.length];
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(ambientGain);
+  if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.9; o.connect(rg); rg.connect(reverbNode); }
+  o.type = 'square'; o.frequency.value = freq;
+  const dur = 2.5;
+  g.gain.setValueAtTime(0, AC.currentTime);
+  g.gain.linearRampToValueAtTime(0.022, AC.currentTime + 0.4);
+  g.gain.linearRampToValueAtTime(0.022, AC.currentTime + dur - 0.6);
+  g.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+  o.start(); o.stop(AC.currentTime + dur + 0.1);
+  // Sub grave ameaçador
+  const o2 = AC.createOscillator(), g2 = AC.createGain();
+  o2.connect(g2); g2.connect(ambientGain);
+  o2.type = 'sine'; o2.frequency.value = freq * 0.25;
+  g2.gain.setValueAtTime(0, AC.currentTime);
+  g2.gain.linearRampToValueAtTime(0.040, AC.currentTime + 0.5);
+  g2.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+  o2.start(); o2.stop(AC.currentTime + dur);
+  // Intervalo de segunda menor dissonante a cada 2 notas
+  if ((ambPhase7.i||0) % 2 === 0) {
+    const od = AC.createOscillator(), gd = AC.createGain();
+    od.connect(gd); gd.connect(ambientGain);
+    if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.7; od.connect(rg); rg.connect(reverbNode); }
+    od.type = 'sawtooth'; od.frequency.value = freq * 1.059; // meio-tom acima
+    gd.gain.setValueAtTime(0, AC.currentTime);
+    gd.gain.linearRampToValueAtTime(0.012, AC.currentTime + 0.6);
+    gd.gain.linearRampToValueAtTime(0, AC.currentTime + dur * 0.7);
+    od.start(); od.stop(AC.currentTime + dur);
+  }
+  ambPhase7.i = (ambPhase7.i||0) + 1;
+  ambTimer = setTimeout(() => ambPhase7(id), 1500 + Math.random() * 2000);
+}
+
 // ── TELA DE INÍCIO ────────────────────────────────────────────
 function drawStartScreen() {
   // Overlay escuro
