@@ -1777,7 +1777,7 @@ function drawPlatforms() {
   for (const p of platforms) {
     const sx = p.x - camX;
     if (sx > W+60 || sx+p.w < -60) continue;
-    const pp = p.x < 5000 ? 1 : p.x < 10000 ? 2 : p.x < 15000 ? 3 : p.x < 23000 ? 4 : 5;
+    const pp = p.x < 5000 ? 1 : p.x < 10000 ? 2 : p.x < 15000 ? 3 : p.x < 23000 ? 4 : p.x < 33000 ? 5 : 6;
     const S = STONE[pp-1];
 
     ctx.save();
