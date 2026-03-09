@@ -2186,7 +2186,7 @@ function drawHUD() {
   // ── Contador de pulos (canto superior direito) ──────────────
   ctx.save();
   ctx.textAlign = 'right';
-  const jumpCol = ['#00e8c8','#ffb030','#b060ff','#88aaff','#ff7020'][phase-1];
+  const jumpCol = ['#00e8c8','#ffb030','#b060ff','#88aaff','#ff7020','#c040ff'][phase-1] || '#c040ff';
   ctx.font = 'bold 13px Georgia';
   ctx.fillStyle = jumpCol;
   ctx.globalAlpha = 0.85;
