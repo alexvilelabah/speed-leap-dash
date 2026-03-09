@@ -2631,7 +2631,7 @@ function startContinuousAmbient(ph, id) {
       rg.gain.value = 0.015;
       rs.start(); continuousNodes.push(rs);
     }
-  } else {
+  } else if (ph === 5) {
     // Vulcão: rumble profundo + chiado de vapor
     const rumbleBuf = createNoiseBuffer(4, 'brown');
     if (rumbleBuf) {
@@ -2640,7 +2640,6 @@ function startContinuousAmbient(ph, id) {
       rf.type = 'lowpass'; rf.frequency.value = 120; rf.Q.value = 2;
       rs.connect(rf); rf.connect(rg); rg.connect(ambientGain);
       rg.gain.value = 0.22;
-      // Pulso de lava
       const lfo = AC.createOscillator(), lfoG = AC.createGain();
       lfo.type = 'sine'; lfo.frequency.value = 0.3;
       lfoG.gain.value = 0.10;
@@ -2648,7 +2647,6 @@ function startContinuousAmbient(ph, id) {
       rs.start(); lfo.start();
       continuousNodes.push(rs, lfo);
     }
-    // Chiado de vapor
     const steamBuf = createNoiseBuffer(2, 'white');
     if (steamBuf) {
       const ss = AC.createBufferSource(), sf2 = AC.createBiquadFilter(), sg = AC.createGain();
@@ -2658,12 +2656,53 @@ function startContinuousAmbient(ph, id) {
       sg.gain.value = 0.04;
       ss.start(); continuousNodes.push(ss);
     }
-    // Drone de calor
     const heat = AC.createOscillator(), hg = AC.createGain();
     heat.type = 'sawtooth'; heat.frequency.value = 55;
     hg.gain.value = 0.02;
     heat.connect(hg); hg.connect(ambientGain);
     heat.start(); continuousNodes.push(heat);
+  } else {
+    // Fase 6 — Castelo Assombrado: vento uivante + órgão sinistro + sussurros
+    const windBuf = createNoiseBuffer(4, 'pink');
+    if (windBuf) {
+      const ws = AC.createBufferSource(), wf = AC.createBiquadFilter(), wg = AC.createGain();
+      ws.buffer = windBuf; ws.loop = true;
+      wf.type = 'bandpass'; wf.frequency.value = 300; wf.Q.value = 1.5;
+      ws.connect(wf); wf.connect(wg); wg.connect(ambientGain);
+      wg.gain.value = 0.14;
+      // Rajadas de vento forte
+      const lfo = AC.createOscillator(), lfoG = AC.createGain();
+      lfo.type = 'sine'; lfo.frequency.value = 0.12;
+      lfoG.gain.value = 250;
+      lfo.connect(lfoG); lfoG.connect(wf.frequency);
+      ws.start(); lfo.start();
+      continuousNodes.push(ws, lfo);
+    }
+    // Drone de órgão sinistro (acorde menor)
+    const organNotes = [55, 65.4, 82.4]; // A1, C2, E2 (Am)
+    for (const freq of organNotes) {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = 'sawtooth'; o.frequency.value = freq;
+      g.gain.value = 0.018;
+      o.connect(g); g.connect(ambientGain);
+      o.start(); continuousNodes.push(o);
+    }
+    // Sussurros fantasmagóricos (noise bandpass)
+    const whisperBuf = createNoiseBuffer(3, 'white');
+    if (whisperBuf) {
+      const ws = AC.createBufferSource(), wf = AC.createBiquadFilter(), wg = AC.createGain();
+      ws.buffer = whisperBuf; ws.loop = true;
+      wf.type = 'bandpass'; wf.frequency.value = 1200; wf.Q.value = 12;
+      ws.connect(wf); wf.connect(wg); wg.connect(ambientGain);
+      wg.gain.value = 0.025;
+      // Modulação lenta dos sussurros
+      const slfo = AC.createOscillator(), slfoG = AC.createGain();
+      slfo.type = 'sine'; slfo.frequency.value = 0.08;
+      slfoG.gain.value = 0.02;
+      slfo.connect(slfoG); slfoG.connect(wg.gain);
+      ws.start(); slfo.start();
+      continuousNodes.push(ws, slfo);
+    }
   }
 }
 
