@@ -3958,6 +3958,38 @@ function ambPhase7(id) {
   ambTimer = setTimeout(() => ambPhase7(id), 1500 + Math.random() * 2000);
 }
 
+function ambPhase8(id) {
+  if (!AC || ambPhaseId !== id) return;
+  // Synthwave — escala menor melódica com arpejos
+  const scale = [130.8, 146.8, 155.6, 174.6, 196, 220, 233.1, 220];
+  const freq = scale[(ambPhase8.i||0) % scale.length];
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(ambientGain);
+  if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.7; o.connect(rg); rg.connect(reverbNode); }
+  const lp = AC.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 800;
+  o.disconnect(); o.connect(lp); lp.connect(g);
+  o.type = 'sawtooth'; o.frequency.value = freq;
+  const dur = 1.2;
+  g.gain.setValueAtTime(0, AC.currentTime);
+  g.gain.linearRampToValueAtTime(0.020, AC.currentTime + 0.15);
+  g.gain.linearRampToValueAtTime(0.018, AC.currentTime + dur - 0.3);
+  g.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+  o.start(); o.stop(AC.currentTime + dur + 0.1);
+  // Oitava acima com delay
+  const o2 = AC.createOscillator(), g2 = AC.createGain();
+  const lp2 = AC.createBiquadFilter();
+  lp2.type = 'lowpass'; lp2.frequency.value = 1200;
+  o2.connect(lp2); lp2.connect(g2); g2.connect(ambientGain);
+  o2.type = 'square'; o2.frequency.value = freq * 2;
+  g2.gain.setValueAtTime(0, AC.currentTime + 0.15);
+  g2.gain.linearRampToValueAtTime(0.010, AC.currentTime + 0.3);
+  g2.gain.linearRampToValueAtTime(0, AC.currentTime + dur * 0.8);
+  o2.start(AC.currentTime + 0.15); o2.stop(AC.currentTime + dur);
+  ambPhase8.i = (ambPhase8.i||0) + 1;
+  ambTimer = setTimeout(() => ambPhase8(id), 600 + Math.random() * 800);
+}
+
 // ── TELA DE INÍCIO ────────────────────────────────────────────
 function drawStartScreen() {
   // Overlay escuro
