@@ -2732,7 +2732,8 @@ function sfxPhaseChange(ph) {
     3: [[130,'square'],[155,'square'],[196,'square'],[233,'square'],[277,'sine']],
     4: [[65,'sine'],[98,'sine'],[131,'sine'],[196,'triangle'],[261,'sine'],[392,'sine']],
     5: [[41,'sine'],[55,'sawtooth'],[82,'sine'],[110,'sawtooth'],[138,'sine'],[165,'sawtooth'],[220,'sine']],
-    6: [[55,'sawtooth'],[65,'square'],[82,'sawtooth'],[98,'square'],[110,'sine'],[131,'sawtooth'],[165,'square'],[196,'sawtooth']]
+    6: [[55,'sawtooth'],[65,'square'],[82,'sawtooth'],[98,'square'],[110,'sine'],[131,'sawtooth'],[165,'square'],[196,'sawtooth']],
+    7: [[41,'square'],[49,'sawtooth'],[55,'square'],[65,'sawtooth'],[82,'square'],[98,'sawtooth'],[110,'square'],[131,'sawtooth'],[165,'square']]
   };
   (chords[ph]||[]).forEach(([f,tp],i) => {
     const o = AC.createOscillator(), g = AC.createGain();
