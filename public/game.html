@@ -2251,7 +2251,7 @@ function drawLandingEffects() {
     const e = landingEffects[i];
     e.t += 0.032;
     if (e.t >= 1) { landingEffects.splice(i, 1); continue; }
-    const [r,g,b] = neon[Math.min(e.ph-1, 5)];
+    const [r,g,b] = neon[Math.min(e.ph-1, 6)];
 
     // Coords da plataforma em tela
     const spx = e.px - camX;       // borda esquerda
