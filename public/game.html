@@ -2000,21 +2000,154 @@ function drawStartScreen() {
   ctx.restore();
 }
 
+// ── EFEITOS VISUAIS NOVOS ─────────────────────────────────────
+
+function updateShake() {
+  if (shakeIntensity > 0.3) {
+    shakeX = (Math.random() - 0.5) * shakeIntensity;
+    shakeY = (Math.random() - 0.5) * shakeIntensity;
+    shakeIntensity *= 0.88;
+  } else {
+    shakeX = 0; shakeY = 0; shakeIntensity = 0;
+  }
+}
+
+function drawChromaticAberration() {
+  if (chromaticAlpha <= 0.01) return;
+  const offset = chromaticAlpha * 6;
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.globalAlpha = chromaticAlpha * 0.35;
+  // Red channel shift
+  ctx.drawImage(canvas, offset, 0, W, H, 0, 0, W, H);
+  // Blue channel shift
+  ctx.drawImage(canvas, -offset, 0, W, H, 0, 0, W, H);
+  ctx.restore();
+  chromaticAlpha *= 0.92;
+  if (chromaticAlpha < 0.01) chromaticAlpha = 0;
+}
+
+function updateSpeedLines() {
+  const isShift = keys['ShiftLeft'] || keys['ShiftRight'];
+  const isMoving = keys['ArrowLeft'] || keys['ArrowRight'] || keys['KeyA'] || keys['KeyD'];
+  if (isShift && isMoving && gameStarted && !gameFinished) {
+    for (let i = 0; i < 2; i++) {
+      speedLineParticles.push({
+        x: player.x + (Math.random() - 0.5) * 60,
+        y: player.y - 20 + Math.random() * 80,
+        vx: -player.facing * (8 + Math.random() * 12),
+        life: 1,
+        len: 20 + Math.random() * 40
+      });
+    }
+  }
+  for (let i = speedLineParticles.length - 1; i >= 0; i--) {
+    const sl = speedLineParticles[i];
+    sl.x += sl.vx;
+    sl.life -= 0.06;
+    if (sl.life <= 0) speedLineParticles.splice(i, 1);
+  }
+}
+
+function drawSpeedLines() {
+  if (speedLineParticles.length === 0) return;
+  const phase = getPhase();
+  const colors = ['rgba(0,220,200,','rgba(60,180,255,','rgba(160,80,255,','rgba(120,180,255,','rgba(255,120,40,'];
+  const col = colors[Math.min(phase-1, 4)];
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  for (const sl of speedLineParticles) {
+    const sx = sl.x - camX;
+    if (sx < -50 || sx > W + 50) continue;
+    ctx.globalAlpha = sl.life * 0.4;
+    ctx.strokeStyle = col + (sl.life * 0.6) + ')';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(sx, sl.y);
+    ctx.lineTo(sx + sl.len * (sl.vx > 0 ? 1 : -1), sl.y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function updateTrail() {
+  if (!gameStarted || gameFinished) return;
+  trailPositions.unshift({ x: player.x + player.w/2, y: player.y + player.h/2, phase: getPhase() });
+  if (trailPositions.length > 18) trailPositions.pop();
+}
+
+function drawTrail() {
+  if (trailPositions.length < 2) return;
+  const trailColors = [
+    [0, 200, 180],
+    [255, 160, 40],
+    [100, 220, 50],
+    [100, 160, 255],
+    [255, 80, 20]
+  ];
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  for (let i = 1; i < trailPositions.length; i++) {
+    const t = trailPositions[i];
+    const alpha = (1 - i / trailPositions.length) * 0.25;
+    const [r,g,b] = trailColors[Math.min(t.phase-1, 4)];
+    const sx = t.x - camX;
+    if (sx < -20 || sx > W + 20) continue;
+    ctx.globalAlpha = alpha;
+    const radius = (1 - i / trailPositions.length) * 8;
+    const grad = ctx.createRadialGradient(sx, t.y, 0, sx, t.y, radius);
+    grad.addColorStop(0, `rgba(${r},${g},${b},${alpha})`);
+    grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(sx, t.y, radius, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawPhaseFlash() {
+  if (phaseFlashAlpha <= 0.01) return;
+  ctx.save();
+  ctx.globalAlpha = phaseFlashAlpha;
+  ctx.fillStyle = phaseFlashColor;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+  phaseFlashAlpha *= 0.90;
+}
+
 // ── LOOP ─────────────────────────────────────────────────────
 function loop() {
   tick++;
   const newPhase = getPhase();
   if (newPhase !== currentPhase) {
     currentPhase = newPhase; phaseNotifAlpha = 2.2;
+    phaseFlashAlpha = 0.6;
+    phaseFlashColor = ['#00e8c8','#ffb030','#b060ff','#88aaff','#ff4020'][Math.min(newPhase-1, 4)];
+    shakeIntensity = 8;
     sfxPhaseChange(newPhase); startAmbient(newPhase);
   }
-  if (gameStarted && !gameFinished) { updatePhysics(); updateParticles(); }
-  updateBgDust(); updateCamera();
-  drawBG(); drawPlatforms(); drawPlayer();
+  if (gameStarted && !gameFinished) {
+    updatePhysics(); updateParticles();
+    updateSpeedLines(); updateTrail();
+  }
+  updateBgDust(); updateCamera(); updateShake();
+
+  // Aplica screen shake
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+
+  drawBG(); drawPlatforms();
+  drawTrail(); // Trail atrás do player
+  drawPlayer();
   for (const p of particles) p.draw(camX);
+  drawSpeedLines(); // Speed lines
   drawLandingEffects();
-  // drawLight();
+  drawPhaseFlash(); // Flash de transição de fase
   if (!gameStarted) { drawStartScreen(); } else { drawHUD(); }
+
+  ctx.restore(); // Remove shake
+
+  drawChromaticAberration(); // Aberração cromática (pós-processamento)
+
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
