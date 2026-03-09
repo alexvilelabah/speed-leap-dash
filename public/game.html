@@ -56,6 +56,7 @@ document.addEventListener('keydown', e => {
   if (!gameStarted) { gameStarted = true; initAudio(); return; }
   keys[e.code] = true; e.preventDefault();
   // Debug: press 6 to jump to phase 6
+  if (e.key === '7' || e.code === 'Digit7') { player.x = 42100; player.y = 380; camX = 42000; }
   if (e.key === '6' || e.code === 'Digit6') { player.x = 33100; player.y = 380; camX = 33000; }
   if (e.key === '5' || e.code === 'Digit5') { player.x = 23100; player.y = 380; camX = 23000; }
 });
@@ -74,7 +75,7 @@ function restartGame() {
   startAmbient(1);
 }
 
-const WORLD_W = 42000;
+const WORLD_W = 52000;
 
 // ── PLATAFORMAS ORIGINAIS ─────────────────────────────────────
 const platforms = [
@@ -469,7 +470,56 @@ const platforms = [
   { x:41050, y:300, w:55, h:14, type:'plat' },
   { x:41300, y:320, w:60, h:14, type:'plat' },
 
-  // Plataformas opcionais dentro das secções de chão (variedade visual)
+  // ── FASE 7 — Cemitério Maldito (Nível 2 Fase 2) — 20 buracos ──
+  // Buracos 225-245px, pedras w=15-26
+  { x:42000, y:430, w:270, h:20, type:'ground' },
+  { x:42490, y:430, w:250, h:20, type:'ground' },
+  { x:42965, y:430, w:232, h:20, type:'ground' },
+  { x:43422, y:430, w:215, h:20, type:'ground' },
+  { x:43862, y:430, w:198, h:20, type:'ground' },
+  { x:44285, y:430, w:182, h:20, type:'ground' },
+  { x:44692, y:430, w:168, h:20, type:'ground' },
+  { x:45085, y:430, w:155, h:20, type:'ground' },
+  { x:45465, y:430, w:142, h:20, type:'ground' },
+  { x:45832, y:430, w:130, h:20, type:'ground' },
+  { x:46187, y:430, w:118, h:20, type:'ground' },
+  { x:46530, y:430, w:108, h:20, type:'ground' },
+  { x:46863, y:430, w:98, h:20, type:'ground' },
+  { x:47186, y:430, w:88, h:20, type:'ground' },
+  { x:47499, y:430, w:80, h:20, type:'ground' },
+  { x:47804, y:430, w:72, h:20, type:'ground' },
+  { x:48101, y:430, w:65, h:20, type:'ground' },
+  { x:48391, y:430, w:60, h:20, type:'ground' },
+  { x:48676, y:430, w:55, h:20, type:'ground' },
+  { x:48956, y:430, w:50, h:20, type:'ground' },
+  { x:49231, y:430, w:2769, h:20, type:'ground' },
+  // Stepping stones — 3 por gap
+  { x:42280, y:338, w:26, h:14, type:'plat' },{ x:42365, y:356, w:26, h:14, type:'plat' },{ x:42450, y:374, w:26, h:14, type:'plat' },
+  { x:42750, y:336, w:25, h:14, type:'plat' },{ x:42835, y:354, w:25, h:14, type:'plat' },{ x:42920, y:372, w:25, h:14, type:'plat' },
+  { x:43207, y:334, w:24, h:14, type:'plat' },{ x:43292, y:352, w:24, h:14, type:'plat' },{ x:43377, y:370, w:24, h:14, type:'plat' },
+  { x:43647, y:332, w:23, h:14, type:'plat' },{ x:43732, y:350, w:23, h:14, type:'plat' },{ x:43817, y:368, w:23, h:14, type:'plat' },
+  { x:44070, y:330, w:22, h:14, type:'plat' },{ x:44155, y:348, w:22, h:14, type:'plat' },{ x:44240, y:366, w:22, h:14, type:'plat' },
+  { x:44477, y:328, w:21, h:14, type:'plat' },{ x:44562, y:346, w:21, h:14, type:'plat' },{ x:44647, y:364, w:21, h:14, type:'plat' },
+  { x:44870, y:326, w:20, h:14, type:'plat' },{ x:44955, y:344, w:20, h:14, type:'plat' },{ x:45040, y:362, w:20, h:14, type:'plat' },
+  { x:45250, y:324, w:19, h:14, type:'plat' },{ x:45335, y:342, w:19, h:14, type:'plat' },{ x:45420, y:360, w:19, h:14, type:'plat' },
+  { x:45617, y:322, w:19, h:14, type:'plat' },{ x:45702, y:340, w:19, h:14, type:'plat' },{ x:45787, y:358, w:19, h:14, type:'plat' },
+  { x:45972, y:320, w:18, h:14, type:'plat' },{ x:46057, y:338, w:18, h:14, type:'plat' },{ x:46142, y:356, w:18, h:14, type:'plat' },
+  { x:46315, y:318, w:18, h:14, type:'plat' },{ x:46400, y:336, w:18, h:14, type:'plat' },{ x:46485, y:354, w:18, h:14, type:'plat' },
+  { x:46648, y:316, w:17, h:14, type:'plat' },{ x:46733, y:334, w:17, h:14, type:'plat' },{ x:46818, y:352, w:17, h:14, type:'plat' },
+  { x:46971, y:314, w:17, h:14, type:'plat' },{ x:47056, y:332, w:17, h:14, type:'plat' },{ x:47141, y:350, w:17, h:14, type:'plat' },
+  { x:47284, y:312, w:16, h:14, type:'plat' },{ x:47369, y:330, w:16, h:14, type:'plat' },{ x:47454, y:348, w:16, h:14, type:'plat' },
+  { x:47589, y:310, w:16, h:14, type:'plat' },{ x:47674, y:328, w:16, h:14, type:'plat' },{ x:47759, y:346, w:16, h:14, type:'plat' },
+  { x:47886, y:308, w:15, h:14, type:'plat' },{ x:47971, y:326, w:15, h:14, type:'plat' },{ x:48056, y:344, w:15, h:14, type:'plat' },
+  { x:48176, y:306, w:15, h:14, type:'plat' },{ x:48261, y:324, w:15, h:14, type:'plat' },{ x:48346, y:342, w:15, h:14, type:'plat' },
+  { x:48461, y:304, w:15, h:14, type:'plat' },{ x:48546, y:322, w:15, h:14, type:'plat' },{ x:48631, y:340, w:15, h:14, type:'plat' },
+  { x:48741, y:302, w:15, h:14, type:'plat' },{ x:48826, y:320, w:15, h:14, type:'plat' },{ x:48911, y:338, w:15, h:14, type:'plat' },
+  // Decorativas finais
+  { x:49400, y:338, w:60, h:14, type:'plat' },
+  { x:49650, y:312, w:55, h:14, type:'plat' },
+  { x:49900, y:332, w:52, h:14, type:'plat' },
+  { x:50150, y:298, w:50, h:14, type:'plat' },
+  { x:50400, y:318, w:55, h:14, type:'plat' },
+
   { x: 5220, y: 350, w: 88,   h: 14, type: 'plat' },
   { x: 5420, y: 335, w: 82,   h: 14, type: 'plat' },
   { x: 5750, y: 345, w: 84,   h: 14, type: 'plat' },
@@ -564,6 +614,7 @@ let trailPositions = [];
 let phaseFlashAlpha = 0, phaseFlashColor = '#00e8c8';
 
 function getPhase() {
+  if (player.x >= 42000) return 7;
   if (player.x >= 33000) return 6;
   if (player.x >= 23000) return 5;
   if (player.x >= 15000) return 4;
@@ -631,7 +682,7 @@ function updatePhysics() {
     shakeIntensity = 18; // SCREEN SHAKE na morte
     chromaticAlpha = 1.0; // ABERRAÇÃO CROMÁTICA na morte
     sfxDeath();
-    const ph3 = getPhase(); const spawnX = ph3===6 ? 33100 : ph3===5 ? 23100 : ph3===4 ? 15100 : ph3===3 ? 10100 : ph3===2 ? 5100 : 80;
+    const ph3 = getPhase(); const spawnX = ph3===7 ? 42100 : ph3===6 ? 33100 : ph3===5 ? 23100 : ph3===4 ? 15100 : ph3===3 ? 10100 : ph3===2 ? 5100 : 80;
     player.x = spawnX; player.y = 380; player.vx = 0; player.vy = 0;
     trailPositions = []; // Limpa trail
   }
@@ -1742,13 +1793,200 @@ function drawBG() {
     ctx.fillStyle=ground; ctx.fillRect(0,H*0.84,W,H*0.16);
   }
 
+  // ===============================================================
+  //  FASE 7 — Cemitério Maldito (Nível 2 Fase 2)
+  // ===============================================================
+  else if (phase === 7) {
+    // Céu vermelho-sangue com nuvens escuras
+    const sky=ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'#08000a'); sky.addColorStop(0.15,'#1a0008'); sky.addColorStop(0.35,'#2a0510'); sky.addColorStop(0.55,'#1a0308'); sky.addColorStop(0.75,'#0c0206'); sky.addColorStop(1,'#060104');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+
+    // ── LUA DE SANGUE ──────────────────────────────────────────
+    const moonX = W*0.82 + (-camX)*0.003;
+    const moonY = H*0.15;
+    const moonR = 45;
+    // Halo vermelho externo
+    ctx.save(); ctx.globalCompositeOperation='screen';
+    for (let r=3; r>=1; r--) {
+      const halo=ctx.createRadialGradient(moonX,moonY,moonR*0.5,moonX,moonY,moonR*r*1.2);
+      halo.addColorStop(0,`rgba(180,0,0,${0.08/r})`); halo.addColorStop(0.5,`rgba(120,0,0,${0.04/r})`); halo.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=halo; ctx.beginPath(); ctx.arc(moonX,moonY,moonR*r*1.2,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+    // Corpo da lua
+    ctx.save();
+    const moonGrad=ctx.createRadialGradient(moonX-8,moonY-5,0,moonX,moonY,moonR);
+    moonGrad.addColorStop(0,'#cc2010'); moonGrad.addColorStop(0.4,'#991008'); moonGrad.addColorStop(0.8,'#660808'); moonGrad.addColorStop(1,'#330404');
+    ctx.fillStyle=moonGrad; ctx.beginPath(); ctx.arc(moonX,moonY,moonR,0,Math.PI*2); ctx.fill();
+    // Crateras
+    ctx.globalAlpha=0.15;
+    for (let i=0; i<6; i++) {
+      const cx2=moonX-15+d_s(i*97)*30, cy2=moonY-12+d_s(i*97+1)*24, cr=3+d_s(i*97+2)*8;
+      ctx.fillStyle='#1a0000'; ctx.beginPath(); ctx.arc(cx2,cy2,cr,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+
+    // Nuvens escuras passando na frente da lua
+    for (let i=0; i<8; i++) {
+      const csx=(d_s(i*47)*W*3+T*(8+d_s(i*47+1)*6))%(W*3)-W*0.3;
+      if (csx<-250||csx>W+250) continue;
+      const csy=10+d_s(i*47+2)*H*0.35;
+      ctx.save(); ctx.globalAlpha=0.25+d_s(i*47+3)*0.15;
+      for (let b=0; b<4; b++) {
+        const bx2=csx+d_s(i*47+b+4)*180-90;
+        const by2=csy+d_s(i*47+b+8)*25;
+        const br=25+d_s(i*47+b+12)*35;
+        const cg=ctx.createRadialGradient(bx2,by2,br*0.1,bx2,by2,br);
+        cg.addColorStop(0,'rgba(8,2,4,0.9)'); cg.addColorStop(1,'rgba(3,0,2,0)');
+        ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(bx2,by2,br,0,Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // ── LÁPIDES em silhueta ─────────────────────────────────────
+    const graveOff=(-camX)*0.04;
+    for (let i=0; i<18; i++) {
+      const gx=((d_s(i*83)*W*2.5+graveOff)%(W*2.5))/2.5;
+      if (gx<-40||gx>W+40) continue;
+      const gh=20+d_s(i*83+1)*40;
+      const gw=10+d_s(i*83+2)*15;
+      const gy=H*0.68+d_s(i*83+3)*H*0.10;
+      ctx.fillStyle='#0a0208';
+      // Tipos de lápide
+      const type=d_s(i*83+4);
+      if (type<0.4) {
+        // Retangular com topo arredondado
+        ctx.fillRect(gx-gw/2, gy-gh, gw, gh);
+        ctx.beginPath(); ctx.arc(gx, gy-gh, gw/2, Math.PI, 0); ctx.fill();
+      } else if (type<0.7) {
+        // Cruz
+        ctx.fillRect(gx-gw*0.15, gy-gh, gw*0.3, gh);
+        ctx.fillRect(gx-gw*0.5, gy-gh*0.7, gw, gw*0.25);
+      } else {
+        // Pedra irregular
+        ctx.beginPath();
+        ctx.moveTo(gx-gw/2, gy);
+        ctx.lineTo(gx-gw/2+2, gy-gh*0.8);
+        ctx.quadraticCurveTo(gx, gy-gh-5, gx+gw/2-2, gy-gh*0.85);
+        ctx.lineTo(gx+gw/2, gy);
+        ctx.closePath(); ctx.fill();
+      }
+      // Texto RIP fantasma
+      if (d_s(i*83+5)>0.5 && gh>30) {
+        ctx.save(); ctx.globalAlpha=0.12;
+        ctx.fillStyle='#440015'; ctx.font='6px Georgia'; ctx.textAlign='center';
+        ctx.fillText('RIP', gx, gy-gh*0.4);
+        ctx.textAlign='left'; ctx.restore();
+      }
+    }
+
+    // ── MÃOS saindo do chão ────────────────────────────────────
+    for (let i=0; i<8; i++) {
+      const hx=((d_s(i*67)*W*2+T*0.5*(0.5+d_s(i*67+1)*0.5))%(W*2))-W*0.1;
+      if (hx<-25||hx>W+25) continue;
+      const hy=H*0.80+d_s(i*67+2)*H*0.06;
+      const hscale=0.6+d_s(i*67+3)*0.6;
+      const sway=Math.sin(T*0.8+i*2.1)*3*hscale;
+      ctx.save();
+      ctx.translate(hx+sway, hy);
+      ctx.scale(hscale, hscale);
+      ctx.fillStyle='#0c0308';
+      // Braço
+      ctx.fillRect(-3, 0, 6, 30);
+      // Palma
+      ctx.beginPath(); ctx.ellipse(0, -2, 8, 6, 0, 0, Math.PI*2); ctx.fill();
+      // Dedos (5)
+      for (let f=0; f<5; f++) {
+        const fx=-8+f*4, fy=-5-f*2+(f>2?(f-2)*2:0);
+        const fh=10+d_s(i*67+f+4)*6;
+        const fang=(f-2)*0.15+Math.sin(T*1.2+i+f)*0.08;
+        ctx.save(); ctx.translate(fx, fy); ctx.rotate(fang);
+        ctx.fillRect(-1.5, -fh, 3, fh);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    // ── CORVOS voando ──────────────────────────────────────────
+    for (let i=0; i<10; i++) {
+      const cx2=((d_s(i*91)*W*3+T*18*(0.6+d_s(i*91+1)*0.8))%(W*3))-W*0.3;
+      const cy2=H*0.05+d_s(i*91+2)*H*0.40+Math.sin(T*1.2+i*2.8)*20;
+      if (cx2<-30||cx2>W+30) continue;
+      const wingPh=T*6+i*4.1;
+      const wingA=Math.sin(wingPh)*0.7;
+      const cs=5+d_s(i*91+3)*5;
+      ctx.save();
+      ctx.translate(cx2, cy2);
+      ctx.fillStyle='#060008';
+      // Corpo
+      ctx.beginPath(); ctx.ellipse(0,0,cs*0.5,cs*0.2,0,0,Math.PI*2); ctx.fill();
+      // Asa esquerda (angular como corvo)
+      ctx.beginPath();
+      ctx.moveTo(-cs*0.3, 0);
+      ctx.lineTo(-cs*(1.0+wingA*0.2), -cs*(0.4+wingA*0.5));
+      ctx.lineTo(-cs*0.8, -cs*wingA*0.2);
+      ctx.lineTo(-cs*0.3, cs*0.05);
+      ctx.fill();
+      // Asa direita
+      ctx.beginPath();
+      ctx.moveTo(cs*0.3, 0);
+      ctx.lineTo(cs*(1.0+wingA*0.2), -cs*(0.4+wingA*0.5));
+      ctx.lineTo(cs*0.8, -cs*wingA*0.2);
+      ctx.lineTo(cs*0.3, cs*0.05);
+      ctx.fill();
+      // Bico
+      ctx.beginPath();
+      ctx.moveTo(cs*0.5, -cs*0.05);
+      ctx.lineTo(cs*0.75, cs*0.05);
+      ctx.lineTo(cs*0.5, cs*0.1);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // ── RELÂMPAGOS VERMELHOS (raros mas dramáticos) ──────────
+    const lChance = Math.sin(T*1.8)*Math.sin(T*4.3)*Math.sin(T*7.1);
+    if (lChance > 0.7) {
+      ctx.save(); ctx.globalCompositeOperation='screen';
+      ctx.fillStyle='rgba(150,20,20,0.12)'; ctx.fillRect(0,0,W,H);
+      let lx2=W*0.2+Math.sin(T*3.5)*W*0.6, ly2=0;
+      ctx.strokeStyle='rgba(220,60,40,0.85)'; ctx.lineWidth=2.5;
+      ctx.shadowColor='rgba(200,30,20,0.8)'; ctx.shadowBlur=18;
+      ctx.beginPath(); ctx.moveTo(lx2,ly2);
+      for (let s=0; s<10; s++) {
+        lx2+=(d_s(s*23+99)-0.5)*45; ly2+=H/10;
+        ctx.lineTo(lx2,ly2);
+      }
+      ctx.stroke();
+      ctx.shadowBlur=0; ctx.restore();
+    }
+
+    // Névoa verde/cinza rasteira de cemitério
+    for (let f=0; f<5; f++) {
+      const fogY = H*0.70 + f*H*0.04;
+      ctx.save();
+      ctx.globalAlpha = 0.08 - f*0.012 + 0.025*Math.sin(T*0.3+f*1.5);
+      const fog=ctx.createLinearGradient(0,fogY,0,fogY+H*0.08);
+      fog.addColorStop(0,'rgba(0,0,0,0)');
+      fog.addColorStop(0.5,`rgba(${15+f*5},${25-f*3},${12+f*4},1)`);
+      fog.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=fog; ctx.fillRect(0,fogY,W,H*0.08);
+      ctx.restore();
+    }
+
+    // Chão de terra do cemitério
+    const ground=ctx.createLinearGradient(0,H*0.82,0,H);
+    ground.addColorStop(0,'rgba(0,0,0,0)'); ground.addColorStop(0.3,'rgba(12,4,6,0.9)'); ground.addColorStop(1,'rgba(8,2,4,0.95)');
+    ctx.fillStyle=ground; ctx.fillRect(0,H*0.82,W,H*0.18);
+  }
+
   // -- Vinheta leve nas bordas (todas as fases) --
   const vign = ctx.createRadialGradient(W/2,H/2,H*0.32,W/2,H/2,H*0.78);
   vign.addColorStop(0,'rgba(0,0,0,0)'); vign.addColorStop(1,'rgba(0,0,0,0.52)');
   ctx.fillStyle=vign; ctx.fillRect(0,0,W,H);
 
   // -- Poeira atmosferica (todas as fases) --
-  const dustCol = [[0,180,200],[0,160,220],[120,60,200],[180,210,255],[230,55,15],[120,40,180]][Math.min(phase-1,5)];
+  const dustCol = [[0,180,200],[0,160,220],[120,60,200],[180,210,255],[230,55,15],[120,40,180],[180,20,30]][Math.min(phase-1,6)];
   const [dr,dg,db]=dustCol;
   for (const d of bgDust) {
     const sx = d.x - camX*0.7;
@@ -1774,13 +2012,14 @@ function drawPlatforms() {
     { top:'#10091a', bot:'#050309', rim:'rgba(75,45,125,0.25)', hi:'rgba(95,60,155,0.20)', cr:'rgba(0,0,0,0.38)', moss:['rgba(45,20,75,0.55)','rgba(28,12,50,0.35)'] },
     { top:'#0c1422', bot:'#030710', rim:'rgba(130,185,255,0.32)', hi:'rgba(175,215,255,0.28)', cr:'rgba(0,0,0,0.40)', moss:['rgba(65,105,195,0.48)','rgba(40,70,155,0.32)'] },
     { top:'#1c0608', bot:'#0a0203', rim:'rgba(220,60,30,0.38)', hi:'rgba(255,90,40,0.30)', cr:'rgba(0,0,0,0.45)', moss:['rgba(180,42,15,0.58)','rgba(120,25,8,0.40)'] },
-    { top:'#120418', bot:'#06010a', rim:'rgba(160,40,180,0.35)', hi:'rgba(200,60,220,0.28)', cr:'rgba(0,0,0,0.42)', moss:['rgba(100,20,120,0.55)','rgba(60,10,80,0.38)'] }
+    { top:'#120418', bot:'#06010a', rim:'rgba(160,40,180,0.35)', hi:'rgba(200,60,220,0.28)', cr:'rgba(0,0,0,0.42)', moss:['rgba(100,20,120,0.55)','rgba(60,10,80,0.38)'] },
+    { top:'#180408', bot:'#0a0104', rim:'rgba(180,20,30,0.35)', hi:'rgba(220,40,40,0.28)', cr:'rgba(0,0,0,0.48)', moss:['rgba(120,15,20,0.55)','rgba(80,8,12,0.38)'] }
   ];
 
   for (const p of platforms) {
     const sx = p.x - camX;
     if (sx > W+60 || sx+p.w < -60) continue;
-    const pp = p.x < 5000 ? 1 : p.x < 10000 ? 2 : p.x < 15000 ? 3 : p.x < 23000 ? 4 : p.x < 33000 ? 5 : 6;
+    const pp = p.x < 5000 ? 1 : p.x < 10000 ? 2 : p.x < 15000 ? 3 : p.x < 23000 ? 4 : p.x < 33000 ? 5 : p.x < 42000 ? 6 : 7;
     const S = STONE[pp-1];
 
     ctx.save();
@@ -1886,8 +2125,9 @@ function drawPlayer() {
     ['#060920','#0c1244','#142278','rgba(35,65,190,0.55)'],   // ph4 void azul
     ['#160504','#3a0e0e','#680e0e','rgba(170,25,18,0.55)'],   // ph5 sangue
     ['#0e0418','#280840','#480e6a','rgba(140,30,180,0.55)'],  // ph6 castelo roxo
+    ['#180206','#3a0808','#6a0e12','rgba(180,20,30,0.55)'],   // ph7 cemitério
   ];
-  const [cDk, cMd, cBrt, cRim] = palettes[Math.min(ph-1,5)];
+  const [cDk, cMd, cBrt, cRim] = palettes[Math.min(ph-1,6)];
 
   ctx.save();
   ctx.translate(px + player.w/2, py + player.h);
@@ -2003,6 +2243,7 @@ function drawLandingEffects() {
     [80, 160, 255],  // ph4 azul
     [255, 50,  30],  // ph5 vermelho
     [180, 40, 220],  // ph6 roxo
+    [200, 20, 30],   // ph7 sangue
   ];
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
@@ -2010,7 +2251,7 @@ function drawLandingEffects() {
     const e = landingEffects[i];
     e.t += 0.032;
     if (e.t >= 1) { landingEffects.splice(i, 1); continue; }
-    const [r,g,b] = neon[Math.min(e.ph-1, 5)];
+    const [r,g,b] = neon[Math.min(e.ph-1, 6)];
 
     // Coords da plataforma em tela
     const spx = e.px - camX;       // borda esquerda
@@ -2157,7 +2398,7 @@ function drawLight() {
     fg.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=fg; ctx.fillRect(0,0,W,H);
 
-  } else {
+  } else if (phase === 6) {
     // Fase 6 — Luz roxa sinistra com pulsação vermelha
     const R = 250 * fl;
     const pg = ctx.createRadialGradient(cx,cy,0,cx,cy,R);
@@ -2172,6 +2413,22 @@ function drawLight() {
     dg.addColorStop(0.5,`rgba(200,0,40,${darkPulse})`);
     dg.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=dg; ctx.fillRect(0,0,W,H);
+
+  } else {
+    // Fase 7 — Luz vermelha sangue com pulsação escura
+    const R = 240 * fl;
+    const pg = ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+    pg.addColorStop(0,'rgba(255,80,60,0.48)');
+    pg.addColorStop(0.28,'rgba(180,20,15,0.26)');
+    pg.addColorStop(0.62,'rgba(100,5,5,0.10)');
+    pg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=pg; ctx.fillRect(0,0,W,H);
+    const bloodPulse = 0.09 + Math.sin(T*2.5)*0.06;
+    const bg = ctx.createRadialGradient(cx,cy,R*0.50,cx,cy,R*0.82);
+    bg.addColorStop(0,'rgba(0,0,0,0)');
+    bg.addColorStop(0.5,`rgba(180,0,10,${bloodPulse})`);
+    bg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
   }
 
   ctx.restore();
@@ -2189,7 +2446,7 @@ function drawHUD() {
   // ── Contador de pulos (canto superior direito) ──────────────
   ctx.save();
   ctx.textAlign = 'right';
-  const jumpCol = ['#00e8c8','#ffb030','#b060ff','#88aaff','#ff7020','#c040ff'][phase-1] || '#c040ff';
+  const jumpCol = ['#00e8c8','#ffb030','#b060ff','#88aaff','#ff7020','#c040ff','#ff2020'][phase-1] || '#ff2020';
   ctx.font = 'bold 13px Georgia';
   ctx.fillStyle = jumpCol;
   ctx.globalAlpha = 0.85;
@@ -2303,9 +2560,15 @@ function drawHUD() {
     ctx.save();
     const na = Math.min(1, phaseNotifAlpha);
     ctx.globalAlpha = na * na;
-    ctx.fillStyle = 'rgba(0,230,200,0.95)';
+    const phNames = ['','Floresta Sombria','Oceano Profundo','Cristal Elétrico','Vazio Estelar','Abismo Carmesim','Castelo Assombrado','Cemitério Maldito'];
+    const phColor = ['','rgba(0,230,200,0.95)','rgba(0,180,240,0.95)','rgba(160,80,255,0.95)','rgba(130,190,255,0.95)','rgba(255,80,30,0.95)','rgba(180,50,220,0.95)','rgba(200,20,30,0.95)'];
+    ctx.fillStyle = phColor[phase] || 'rgba(0,230,200,0.95)';
     ctx.font = 'bold 38px Georgia'; ctx.textAlign = 'center'; ctx.letterSpacing = '6px';
     ctx.fillText(`✦ FASE ${phase} ✦`, W/2, H/2 - 10);
+    if (phNames[phase]) {
+      ctx.font = '16px Georgia'; ctx.letterSpacing = '4px';
+      ctx.fillText(phNames[phase].toUpperCase(), W/2, H/2 + 18);
+    }
     ctx.textAlign = 'left';
     phaseNotifAlpha -= 0.014;
     ctx.restore();
@@ -2383,8 +2646,8 @@ function sfxJump() {
   const o = AC.createOscillator(), g = AC.createGain();
   o.connect(g); g.connect(masterVol);
   if (reverbNode) { const g2 = AC.createGain(); g2.gain.value = 0.3; o.connect(g2); g2.connect(reverbNode); }
-  o.type = (['square','triangle','sine','sine','sawtooth'])[Math.min(ph-1,4)];
-  const [f1,f2] = ([[160,640],[150,460],[130,370],[110,290],[95,240]])[Math.min(ph-1,4)];
+  o.type = (['square','triangle','sine','sine','sawtooth','sawtooth','square'])[Math.min(ph-1,6)];
+  const [f1,f2] = ([[160,640],[150,460],[130,370],[110,290],[95,240],[85,200],[75,180]])[Math.min(ph-1,6)];
   o.frequency.setValueAtTime(f1, AC.currentTime);
   o.frequency.exponentialRampToValueAtTime(f2, AC.currentTime + 0.08);
   g.gain.setValueAtTime(0.11, AC.currentTime);
@@ -2475,7 +2738,8 @@ function sfxPhaseChange(ph) {
     3: [[130,'square'],[155,'square'],[196,'square'],[233,'square'],[277,'sine']],
     4: [[65,'sine'],[98,'sine'],[131,'sine'],[196,'triangle'],[261,'sine'],[392,'sine']],
     5: [[41,'sine'],[55,'sawtooth'],[82,'sine'],[110,'sawtooth'],[138,'sine'],[165,'sawtooth'],[220,'sine']],
-    6: [[55,'sawtooth'],[65,'square'],[82,'sawtooth'],[98,'square'],[110,'sine'],[131,'sawtooth'],[165,'square'],[196,'sawtooth']]
+    6: [[55,'sawtooth'],[65,'square'],[82,'sawtooth'],[98,'square'],[110,'sine'],[131,'sawtooth'],[165,'square'],[196,'sawtooth']],
+    7: [[41,'square'],[49,'sawtooth'],[55,'square'],[65,'sawtooth'],[82,'square'],[98,'sawtooth'],[110,'square'],[131,'sawtooth'],[165,'square']]
   };
   (chords[ph]||[]).forEach(([f,tp],i) => {
     const o = AC.createOscillator(), g = AC.createGain();
@@ -2508,7 +2772,8 @@ function startAmbient(ph) {
   else if (ph === 3) { ambPhase3.i = 0; ambPhase3(id); }
   else if (ph === 4) { ambPhase4.i = 0; ambPhase4(id); }
   else if (ph === 5) { ambPhase5.i = 0; ambPhase5(id); }
-  else { ambPhase6.i = 0; ambPhase6(id); }
+  else if (ph === 6) { ambPhase6.i = 0; ambPhase6(id); }
+  else { ambPhase7.i = 0; ambPhase7(id); }
   // Start random environmental sfx
   startEnvSfx(ph, id);
 }
@@ -2664,7 +2929,7 @@ function startContinuousAmbient(ph, id) {
     hg.gain.value = 0.02;
     heat.connect(hg); hg.connect(ambientGain);
     heat.start(); continuousNodes.push(heat);
-  } else {
+  } else if (ph === 6) {
     // Fase 6 — Castelo Assombrado: vento uivante + órgão sinistro + sussurros
     const windBuf = createNoiseBuffer(4, 'pink');
     if (windBuf) {
@@ -2673,7 +2938,6 @@ function startContinuousAmbient(ph, id) {
       wf.type = 'bandpass'; wf.frequency.value = 300; wf.Q.value = 1.5;
       ws.connect(wf); wf.connect(wg); wg.connect(ambientGain);
       wg.gain.value = 0.14;
-      // Rajadas de vento forte
       const lfo = AC.createOscillator(), lfoG = AC.createGain();
       lfo.type = 'sine'; lfo.frequency.value = 0.12;
       lfoG.gain.value = 250;
@@ -2681,8 +2945,7 @@ function startContinuousAmbient(ph, id) {
       ws.start(); lfo.start();
       continuousNodes.push(ws, lfo);
     }
-    // Drone de órgão sinistro (acorde menor)
-    const organNotes = [55, 65.4, 82.4]; // A1, C2, E2 (Am)
+    const organNotes = [55, 65.4, 82.4];
     for (const freq of organNotes) {
       const o = AC.createOscillator(), g = AC.createGain();
       o.type = 'sawtooth'; o.frequency.value = freq;
@@ -2690,7 +2953,6 @@ function startContinuousAmbient(ph, id) {
       o.connect(g); g.connect(ambientGain);
       o.start(); continuousNodes.push(o);
     }
-    // Sussurros fantasmagóricos (noise bandpass)
     const whisperBuf = createNoiseBuffer(3, 'white');
     if (whisperBuf) {
       const ws = AC.createBufferSource(), wf = AC.createBiquadFilter(), wg = AC.createGain();
@@ -2698,10 +2960,60 @@ function startContinuousAmbient(ph, id) {
       wf.type = 'bandpass'; wf.frequency.value = 1200; wf.Q.value = 12;
       ws.connect(wf); wf.connect(wg); wg.connect(ambientGain);
       wg.gain.value = 0.025;
-      // Modulação lenta dos sussurros
       const slfo = AC.createOscillator(), slfoG = AC.createGain();
       slfo.type = 'sine'; slfo.frequency.value = 0.08;
       slfoG.gain.value = 0.02;
+      slfo.connect(slfoG); slfoG.connect(wg.gain);
+      ws.start(); slfo.start();
+      continuousNodes.push(ws, slfo);
+    }
+  } else {
+    // Fase 7 — Cemitério: vento uivante grave + coro fúnebre + batidas de coração
+    const windBuf = createNoiseBuffer(4, 'brown');
+    if (windBuf) {
+      const ws = AC.createBufferSource(), wf = AC.createBiquadFilter(), wg = AC.createGain();
+      ws.buffer = windBuf; ws.loop = true;
+      wf.type = 'bandpass'; wf.frequency.value = 180; wf.Q.value = 1.8;
+      ws.connect(wf); wf.connect(wg); wg.connect(ambientGain);
+      wg.gain.value = 0.16;
+      const lfo = AC.createOscillator(), lfoG = AC.createGain();
+      lfo.type = 'sine'; lfo.frequency.value = 0.09;
+      lfoG.gain.value = 120;
+      lfo.connect(lfoG); lfoG.connect(wf.frequency);
+      ws.start(); lfo.start();
+      continuousNodes.push(ws, lfo);
+    }
+    // Coro fúnebre — acordes menores graves
+    const choirNotes = [49, 55, 65.4, 73.4]; // Db1, A1, C2, D2
+    for (const freq of choirNotes) {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.value = 0.022;
+      o.connect(g); g.connect(ambientGain);
+      o.start(); continuousNodes.push(o);
+    }
+    // Batida de coração lenta
+    const hbLfo = AC.createOscillator(), hbG = AC.createGain();
+    hbLfo.type = 'sine'; hbLfo.frequency.value = 35;
+    hbG.gain.value = 0.030;
+    const hbMod = AC.createOscillator(), hbModG = AC.createGain();
+    hbMod.type = 'sine'; hbMod.frequency.value = 1.1; // ~66 bpm
+    hbModG.gain.value = 0.030;
+    hbMod.connect(hbModG); hbModG.connect(hbG.gain);
+    hbLfo.connect(hbG); hbG.connect(ambientGain);
+    hbLfo.start(); hbMod.start();
+    continuousNodes.push(hbLfo, hbMod);
+    // Sussurros dos mortos
+    const deathWhisper = createNoiseBuffer(3, 'white');
+    if (deathWhisper) {
+      const ws = AC.createBufferSource(), wf = AC.createBiquadFilter(), wg = AC.createGain();
+      ws.buffer = deathWhisper; ws.loop = true;
+      wf.type = 'bandpass'; wf.frequency.value = 900; wf.Q.value = 18;
+      ws.connect(wf); wf.connect(wg); wg.connect(ambientGain);
+      wg.gain.value = 0.020;
+      const slfo = AC.createOscillator(), slfoG = AC.createGain();
+      slfo.type = 'sine'; slfo.frequency.value = 0.06;
+      slfoG.gain.value = 0.018;
       slfo.connect(slfoG); slfoG.connect(wg.gain);
       ws.start(); slfo.start();
       continuousNodes.push(ws, slfo);
@@ -2721,7 +3033,8 @@ function startEnvSfx(ph, id) {
                   ph === 3 ? 800+Math.random()*3500 :
                   ph === 4 ? 4000+Math.random()*6000 :
                   ph === 5 ? 1000+Math.random()*2500 :
-                             800+Math.random()*2000;
+                  ph === 6 ? 800+Math.random()*2000 :
+                             700+Math.random()*1800;
     sfxTimers.push(setTimeout(() => scheduleNext(), delay));
   }
   sfxTimers.push(setTimeout(() => scheduleNext(), 1500));
@@ -2936,11 +3249,10 @@ function playEnvSfx(ph) {
         ns.start(t); ns.stop(t+0.6);
       }
     }
-  } else {
+  } else if (ph === 6) {
     // Fase 6 — Castelo: risada de bruxa, trovão hiper alto, morcegos, correntes
     const r = Math.random();
     if (r < 0.3) {
-      // RISADA DE BRUXA: glissandos agudos rápidos com vibrato
       const laughNotes = [800, 1000, 900, 1100, 850, 1050, 950];
       const noteCount = 4 + Math.floor(Math.random()*4);
       for (let i = 0; i < noteCount; i++) {
@@ -2958,7 +3270,6 @@ function playEnvSfx(ph) {
         o.start(t+d); o.stop(t+d+0.13);
       }
     } else if (r < 0.55) {
-      // TROVÃO HIPER ALTO — muito mais intenso que fase 3
       const nb = createNoiseBuffer(3.5, 'brown');
       if (nb) {
         const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
@@ -2973,7 +3284,6 @@ function playEnvSfx(ph) {
         ng.gain.exponentialRampToValueAtTime(0.001, t+3.2);
         ns.start(t); ns.stop(t+3.5);
       }
-      // Crack estridente do raio
       const crackBuf = createNoiseBuffer(0.15, 'white');
       if (crackBuf) {
         const cs = AC.createBufferSource(), cf = AC.createBiquadFilter(), cg = AC.createGain();
@@ -2984,7 +3294,6 @@ function playEnvSfx(ph) {
         cs.start(t); cs.stop(t+0.15);
       }
     } else if (r < 0.75) {
-      // Morcegos esvoaçando (chiados agudos rápidos)
       const count = 5 + Math.floor(Math.random()*6);
       for (let i = 0; i < count; i++) {
         const d = i * (0.03 + Math.random()*0.04);
@@ -2999,7 +3308,6 @@ function playEnvSfx(ph) {
         }
       }
     } else {
-      // Correntes arrastando + porta rangendo
       const o = AC.createOscillator(), g = AC.createGain();
       o.connect(g); g.connect(ambientGain);
       if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.9; o.connect(rg); rg.connect(reverbNode); }
@@ -3012,6 +3320,66 @@ function playEnvSfx(ph) {
       g.gain.linearRampToValueAtTime(0.03, t+1.5);
       g.gain.linearRampToValueAtTime(0, t+2.2);
       o.start(t); o.stop(t+2.3);
+    }
+  } else {
+    // Fase 7 — Cemitério: corvos grasnando, ossos estalando, gemidos, terra sendo cavada
+    const r = Math.random();
+    if (r < 0.3) {
+      // Corvo grasnando — tom mais grave e áspero
+      const count = 2 + Math.floor(Math.random()*3);
+      for (let i = 0; i < count; i++) {
+        const d = i * (0.15 + Math.random()*0.1);
+        const o = AC.createOscillator(), g = AC.createGain();
+        o.connect(g); g.connect(ambientGain);
+        if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.5; o.connect(rg); rg.connect(reverbNode); }
+        o.type = 'sawtooth';
+        const baseF = 280 + Math.random()*80;
+        o.frequency.setValueAtTime(baseF, t+d);
+        o.frequency.exponentialRampToValueAtTime(baseF*0.6, t+d+0.12);
+        g.gain.setValueAtTime(0.08, t+d);
+        g.gain.exponentialRampToValueAtTime(0.001, t+d+0.15);
+        o.start(t+d); o.stop(t+d+0.16);
+      }
+    } else if (r < 0.5) {
+      // Ossos estalando — clicks secos
+      const count = 3 + Math.floor(Math.random()*5);
+      for (let i = 0; i < count; i++) {
+        const d = i * (0.04 + Math.random()*0.06);
+        const nb = createNoiseBuffer(0.02, 'white');
+        if (nb) {
+          const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+          ns.buffer = nb; nf.type = 'highpass'; nf.frequency.value = 4000+Math.random()*2000;
+          ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+          ng.gain.setValueAtTime(0.07, t+d);
+          ng.gain.exponentialRampToValueAtTime(0.001, t+d+0.015);
+          ns.start(t+d); ns.stop(t+d+0.02);
+        }
+      }
+    } else if (r < 0.75) {
+      // Gemido dos mortos — tom descendente longo
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.connect(g); g.connect(ambientGain);
+      if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.9; o.connect(rg); rg.connect(reverbNode); }
+      o.type = 'sine';
+      const baseF = 120 + Math.random()*60;
+      o.frequency.setValueAtTime(baseF, t);
+      o.frequency.exponentialRampToValueAtTime(baseF*0.5, t+2.0);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.04, t+0.3);
+      g.gain.linearRampToValueAtTime(0.03, t+1.5);
+      g.gain.linearRampToValueAtTime(0, t+2.2);
+      o.start(t); o.stop(t+2.3);
+    } else {
+      // Terra sendo cavada — rumble + scraping
+      const nb = createNoiseBuffer(0.5, 'brown');
+      if (nb) {
+        const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+        ns.buffer = nb; nf.type = 'lowpass'; nf.frequency.value = 200;
+        ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+        ng.gain.setValueAtTime(0.12, t);
+        ng.gain.exponentialRampToValueAtTime(0.001, t+0.4);
+        ns.start(t); ns.stop(t+0.5);
+      }
     }
   }
 }
@@ -3220,6 +3588,44 @@ function ambPhase6(id) {
   ambTimer = setTimeout(() => ambPhase6(id), 1200 + Math.random() * 1800);
 }
 
+function ambPhase7(id) {
+  if (!AC || ambPhaseId !== id) return;
+  // Escala frígia — sombria e funeral
+  const scale = [82.4, 87.3, 98, 110, 123.5, 130.8, 146.8, 130.8];
+  const freq = scale[(ambPhase7.i||0) % scale.length];
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(ambientGain);
+  if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.9; o.connect(rg); rg.connect(reverbNode); }
+  o.type = 'square'; o.frequency.value = freq;
+  const dur = 2.5;
+  g.gain.setValueAtTime(0, AC.currentTime);
+  g.gain.linearRampToValueAtTime(0.022, AC.currentTime + 0.4);
+  g.gain.linearRampToValueAtTime(0.022, AC.currentTime + dur - 0.6);
+  g.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+  o.start(); o.stop(AC.currentTime + dur + 0.1);
+  // Sub grave ameaçador
+  const o2 = AC.createOscillator(), g2 = AC.createGain();
+  o2.connect(g2); g2.connect(ambientGain);
+  o2.type = 'sine'; o2.frequency.value = freq * 0.25;
+  g2.gain.setValueAtTime(0, AC.currentTime);
+  g2.gain.linearRampToValueAtTime(0.040, AC.currentTime + 0.5);
+  g2.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+  o2.start(); o2.stop(AC.currentTime + dur);
+  // Intervalo de segunda menor dissonante a cada 2 notas
+  if ((ambPhase7.i||0) % 2 === 0) {
+    const od = AC.createOscillator(), gd = AC.createGain();
+    od.connect(gd); gd.connect(ambientGain);
+    if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.7; od.connect(rg); rg.connect(reverbNode); }
+    od.type = 'sawtooth'; od.frequency.value = freq * 1.059; // meio-tom acima
+    gd.gain.setValueAtTime(0, AC.currentTime);
+    gd.gain.linearRampToValueAtTime(0.012, AC.currentTime + 0.6);
+    gd.gain.linearRampToValueAtTime(0, AC.currentTime + dur * 0.7);
+    od.start(); od.stop(AC.currentTime + dur);
+  }
+  ambPhase7.i = (ambPhase7.i||0) + 1;
+  ambTimer = setTimeout(() => ambPhase7(id), 1500 + Math.random() * 2000);
+}
+
 // ── TELA DE INÍCIO ────────────────────────────────────────────
 function drawStartScreen() {
   // Overlay escuro
@@ -3309,8 +3715,8 @@ function updateSpeedLines() {
 function drawSpeedLines() {
   if (speedLineParticles.length === 0) return;
   const phase = getPhase();
-  const colors = ['rgba(0,220,200,','rgba(60,180,255,','rgba(160,80,255,','rgba(120,180,255,','rgba(255,120,40,','rgba(180,60,255,'];
-  const col = colors[Math.min(phase-1, 5)];
+  const colors = ['rgba(0,220,200,','rgba(60,180,255,','rgba(160,80,255,','rgba(120,180,255,','rgba(255,120,40,','rgba(180,60,255,','rgba(200,20,30,'];
+  const col = colors[Math.min(phase-1, 6)];
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
   for (const sl of speedLineParticles) {
@@ -3341,14 +3747,15 @@ function drawTrail() {
     [100, 220, 50],
     [100, 160, 255],
     [255, 80, 20],
-    [180, 50, 220]
+    [180, 50, 220],
+    [200, 20, 30]
   ];
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
   for (let i = 1; i < trailPositions.length; i++) {
     const t = trailPositions[i];
     const alpha = (1 - i / trailPositions.length) * 0.25;
-    const [r,g,b] = trailColors[Math.min(t.phase-1, 5)];
+    const [r,g,b] = trailColors[Math.min(t.phase-1, 6)];
     const sx = t.x - camX;
     if (sx < -20 || sx > W + 20) continue;
     ctx.globalAlpha = alpha;
@@ -3378,10 +3785,10 @@ function loop() {
   const newPhase = getPhase();
   if (newPhase !== currentPhase) {
     currentPhase = newPhase; phaseNotifAlpha = 2.2;
-    phaseFlashAlpha = newPhase === 6 ? 1.0 : 0.6;
-    phaseFlashColor = ['#00e8c8','#ffb030','#b060ff','#88aaff','#ff4020','#a020e0'][Math.min(newPhase-1, 5)];
-    shakeIntensity = newPhase === 6 ? 20 : 8;
-    chromaticAlpha = newPhase === 6 ? 0.8 : 0;
+    phaseFlashAlpha = newPhase >= 6 ? 1.0 : 0.6;
+    phaseFlashColor = ['#00e8c8','#ffb030','#b060ff','#88aaff','#ff4020','#a020e0','#cc0015'][Math.min(newPhase-1, 6)];
+    shakeIntensity = newPhase >= 6 ? 20 : 8;
+    chromaticAlpha = newPhase >= 6 ? 0.8 : 0;
     sfxPhaseChange(newPhase); startAmbient(newPhase);
   }
   if (gameStarted && !gameFinished) {
