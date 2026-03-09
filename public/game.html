@@ -3248,7 +3248,7 @@ function startContinuousAmbient(ph, id) {
       ws.start(); slfo.start();
       continuousNodes.push(ws, slfo);
     }
-  } else {
+  } else if (ph === 7) {
     // Fase 7 — Cemitério: vento uivante grave + coro fúnebre + batidas de coração
     const windBuf = createNoiseBuffer(4, 'brown');
     if (windBuf) {
