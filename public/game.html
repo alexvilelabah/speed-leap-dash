@@ -1172,14 +1172,15 @@ function drawBG() {
     }
     ctx.restore();
 
-    // ── PLANETA COM ATMOSFERA ─────────────────────────────────────
-    const px=W*0.62+(-camX)*0.003, py=H*0.30, pr=55;
+    // ── PLANETA REALISTA (Júpiter-like) ─────────────────────────────
+    const px=W*0.62+(-camX)*0.003, py=H*0.30, pr=65;
 
-    // Glow atmosférico
+    // Glow atmosférico externo (múltiplas camadas)
     ctx.save(); ctx.globalCompositeOperation='screen';
     for (const [cr,cg2,cb,ri,ro,a] of [
-      [60,100,200, pr*0.9, pr*3.0, 0.06],
-      [40,70,180, pr*1.0, pr*2.0, 0.10],
+      [255,180,100, pr*0.8, pr*4.0, 0.03],
+      [200,120,60, pr*0.9, pr*2.8, 0.05],
+      [180,100,50, pr*1.0, pr*2.0, 0.08],
     ]) {
       const g2=ctx.createRadialGradient(px,py,ri,px,py,ro);
       g2.addColorStop(0,`rgba(${cr},${cg2},${cb},${a})`); g2.addColorStop(1,'rgba(0,0,0,0)');
@@ -1187,64 +1188,115 @@ function drawBG() {
     }
     ctx.restore();
 
-    // Anéis traseiros
-    ctx.save();
-    ctx.beginPath(); ctx.ellipse(px,py,pr*2.3,pr*0.26,0,Math.PI,Math.PI*2); ctx.clip();
-    const ringData = [
-      [pr*1.20, pr*0.14, 6,  'rgba(180,160,120,0.45)'],
-      [pr*1.35, pr*0.16, 12, 'rgba(210,190,140,0.60)'],
-      [pr*1.48, pr*0.17, 3,  'rgba(100,85,60,0.20)'],
-      [pr*1.58, pr*0.18, 16, 'rgba(220,200,150,0.70)'],
-      [pr*1.75, pr*0.20, 8,  'rgba(190,170,120,0.50)'],
-      [pr*1.90, pr*0.21, 5,  'rgba(150,130,90,0.30)'],
-      [pr*2.05, pr*0.22, 3,  'rgba(120,100,70,0.18)'],
-    ];
-    for (const [ra,rb,lw,col] of ringData) {
-      ctx.strokeStyle=col; ctx.lineWidth=lw;
-      ctx.beginPath(); ctx.ellipse(px,py,ra,rb,0,0,Math.PI*2); ctx.stroke();
-    }
-    ctx.restore();
-
-    // Corpo do planeta (gas giant com bandas)
-    const pGrad=ctx.createRadialGradient(px-pr*0.3,py-pr*0.3,pr*0.05,px,py,pr);
-    pGrad.addColorStop(0.00,'#b8c8e0');
-    pGrad.addColorStop(0.15,'#7090c8');
-    pGrad.addColorStop(0.35,'#4060b0');
-    pGrad.addColorStop(0.55,'#284090');
-    pGrad.addColorStop(0.80,'#101870');
-    pGrad.addColorStop(1.00,'#060840');
+    // Corpo do planeta — gradiente base realista
+    const pGrad=ctx.createRadialGradient(px-pr*0.35,py-pr*0.35,pr*0.02,px,py,pr);
+    pGrad.addColorStop(0.00,'#f0dcc0');
+    pGrad.addColorStop(0.10,'#e8c8a0');
+    pGrad.addColorStop(0.25,'#d4a878');
+    pGrad.addColorStop(0.40,'#c08050');
+    pGrad.addColorStop(0.55,'#a06838');
+    pGrad.addColorStop(0.70,'#885028');
+    pGrad.addColorStop(0.85,'#603818');
+    pGrad.addColorStop(1.00,'#2a1808');
     ctx.beginPath(); ctx.arc(px,py,pr,0,Math.PI*2);
     ctx.fillStyle=pGrad; ctx.fill();
 
-    // Bandas atmosféricas
+    // Bandas atmosféricas detalhadas (estilo Júpiter)
     ctx.save(); ctx.beginPath(); ctx.arc(px,py,pr,0,Math.PI*2); ctx.clip();
-    ctx.globalCompositeOperation='screen';
-    const bands = [
-      [py-pr*0.55, pr*0.08, 0.04],
-      [py-pr*0.25, pr*0.06, 0.03],
-      [py+pr*0.10, pr*0.07, 0.035],
-      [py+pr*0.40, pr*0.05, 0.025],
+    const bandColors = [
+      [py-pr*0.78, pr*0.06, 'rgba(210,170,110,0.5)'],
+      [py-pr*0.60, pr*0.10, 'rgba(180,110,50,0.55)'],
+      [py-pr*0.42, pr*0.07, 'rgba(240,210,160,0.4)'],
+      [py-pr*0.25, pr*0.12, 'rgba(160,80,30,0.6)'],
+      [py-pr*0.05, pr*0.08, 'rgba(220,180,120,0.35)'],
+      [py+pr*0.12, pr*0.14, 'rgba(140,70,25,0.65)'],
+      [py+pr*0.30, pr*0.06, 'rgba(230,200,150,0.4)'],
+      [py+pr*0.45, pr*0.10, 'rgba(170,100,40,0.5)'],
+      [py+pr*0.62, pr*0.08, 'rgba(200,150,90,0.45)'],
+      [py+pr*0.78, pr*0.06, 'rgba(120,60,20,0.5)'],
     ];
-    for (const [by2,bry,ba] of bands) {
-      ctx.strokeStyle='rgba(140,180,255,1)'; ctx.lineWidth=bry*2; ctx.globalAlpha=ba;
-      ctx.beginPath(); ctx.ellipse(px,by2+Math.sin(T*0.12)*2,pr*0.98,bry,0,0,Math.PI*2); ctx.stroke();
+    for (const [by2,bh,col] of bandColors) {
+      const waveY = by2 + Math.sin(T*0.08 + by2*0.1)*1.5;
+      ctx.fillStyle=col;
+      ctx.beginPath();
+      // Ondulação realista nas bandas
+      for (let bx=-pr; bx<=pr; bx+=2) {
+        const edge = Math.sqrt(Math.max(0, pr*pr - bx*bx));
+        const wy = waveY + Math.sin(bx*0.08+T*0.15)*2 + Math.sin(bx*0.03-T*0.07)*3;
+        if (bx===-pr) ctx.moveTo(px+bx, wy-bh);
+        else ctx.lineTo(px+bx, wy-bh);
+      }
+      for (let bx=pr; bx>=-pr; bx-=2) {
+        const wy = waveY + Math.sin(bx*0.08+T*0.15)*2 + Math.sin(bx*0.03-T*0.07)*3;
+        ctx.lineTo(px+bx, wy+bh);
+      }
+      ctx.closePath(); ctx.fill();
+    }
+
+    // Grande Mancha Vermelha
+    const spotX = px - pr*0.15 + Math.sin(T*0.03)*3;
+    const spotY = py + pr*0.13;
+    const spotRx = pr*0.22, spotRy = pr*0.12;
+    // Sombra da mancha
+    const spotGrad = ctx.createRadialGradient(spotX,spotY,0,spotX,spotY,spotRx);
+    spotGrad.addColorStop(0,'rgba(180,50,20,0.7)');
+    spotGrad.addColorStop(0.3,'rgba(200,70,30,0.6)');
+    spotGrad.addColorStop(0.6,'rgba(160,60,25,0.4)');
+    spotGrad.addColorStop(1,'rgba(140,50,20,0.0)');
+    ctx.fillStyle=spotGrad;
+    ctx.save(); ctx.translate(spotX,spotY); ctx.rotate(Math.sin(T*0.02)*0.1);
+    ctx.beginPath(); ctx.ellipse(0,0,spotRx,spotRy,0,0,Math.PI*2); ctx.fill();
+    // Vórtice interno
+    ctx.strokeStyle='rgba(220,100,40,0.3)'; ctx.lineWidth=1;
+    for (let v=0;v<3;v++) {
+      const vr = spotRx*(0.3+v*0.2);
+      ctx.beginPath();
+      ctx.ellipse(Math.sin(T*0.05+v)*2, Math.cos(T*0.04+v)*1.5, vr, vr*0.5, T*0.02+v*0.8, 0, Math.PI*2);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.restore();
+
+    // Turbulência/textura na superfície
+    ctx.save(); ctx.beginPath(); ctx.arc(px,py,pr,0,Math.PI*2); ctx.clip();
+    ctx.globalCompositeOperation='overlay'; ctx.globalAlpha=0.08;
+    for (let ti=0;ti<40;ti++) {
+      const tx2=px-pr+d_s(ti*73)*pr*2;
+      const ty2=py-pr+d_s(ti*73+1)*pr*2;
+      const tr2=2+d_s(ti*73+2)*8;
+      ctx.fillStyle=d_s(ti*73+3)>0.5?'#fff':'#000';
+      ctx.beginPath(); ctx.arc(tx2,ty2,tr2,0,Math.PI*2); ctx.fill();
     }
     ctx.restore();
 
-    // Rim light
+    // Terminador (sombra do lado escuro)
+    ctx.save();
+    ctx.beginPath(); ctx.arc(px,py,pr,0,Math.PI*2); ctx.clip();
+    const termGrad=ctx.createLinearGradient(px-pr*1.2,py,px+pr*0.8,py);
+    termGrad.addColorStop(0,'rgba(0,0,0,0)');
+    termGrad.addColorStop(0.5,'rgba(0,0,0,0)');
+    termGrad.addColorStop(0.8,'rgba(0,0,0,0.3)');
+    termGrad.addColorStop(1,'rgba(0,0,0,0.7)');
+    ctx.fillStyle=termGrad; ctx.fillRect(px-pr,py-pr,pr*2,pr*2);
+    ctx.restore();
+
+    // Rim light (luz de borda)
     ctx.save(); ctx.globalCompositeOperation='screen';
-    const rim=ctx.createRadialGradient(px,py,pr*0.82,px,py,pr);
-    rim.addColorStop(0,'rgba(0,0,0,0)'); rim.addColorStop(0.7,'rgba(60,100,200,0.0)'); rim.addColorStop(1,'rgba(100,160,240,0.4)');
+    const rim=ctx.createRadialGradient(px+pr*0.15,py,pr*0.85,px,py,pr);
+    rim.addColorStop(0,'rgba(0,0,0,0)');
+    rim.addColorStop(0.85,'rgba(0,0,0,0)');
+    rim.addColorStop(0.93,'rgba(255,200,120,0.15)');
+    rim.addColorStop(1,'rgba(255,180,80,0.35)');
     ctx.fillStyle=rim; ctx.beginPath(); ctx.arc(px,py,pr,0,Math.PI*2); ctx.fill();
     ctx.restore();
 
-    // Anéis dianteiros
-    ctx.save();
-    ctx.beginPath(); ctx.ellipse(px,py,pr*2.3,pr*0.26,0,0,Math.PI); ctx.clip();
-    for (const [ra,rb,lw,col] of ringData) {
-      ctx.strokeStyle=col; ctx.lineWidth=lw;
-      ctx.beginPath(); ctx.ellipse(px,py,ra,rb,0,0,Math.PI*2); ctx.stroke();
-    }
+    // Reflexo especular sutil
+    ctx.save(); ctx.globalCompositeOperation='screen';
+    const specGrad=ctx.createRadialGradient(px-pr*0.35,py-pr*0.35,0,px-pr*0.35,py-pr*0.35,pr*0.4);
+    specGrad.addColorStop(0,'rgba(255,255,240,0.12)');
+    specGrad.addColorStop(0.5,'rgba(255,240,200,0.04)');
+    specGrad.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=specGrad; ctx.beginPath(); ctx.arc(px,py,pr,0,Math.PI*2); ctx.fill();
     ctx.restore();
 
     // Asteroides com sombra
