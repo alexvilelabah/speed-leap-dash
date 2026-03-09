@@ -1,0 +1,2158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vagalume no Escuro</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Georgia', serif;
+  }
+  #title {
+    color: #7acc20;
+    font-size: 13px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    opacity: 0.7;
+  }
+  #gameCanvas {
+    border: 1px solid #2a1a00;
+    cursor: none;
+    display: block;
+    box-shadow: 0 0 60px rgba(120, 220, 0, 0.15);
+  }
+  #controls {
+    color: #3a7010;
+    font-size: 11px;
+    letter-spacing: 3px;
+    margin-top: 8px;
+    opacity: 0.6;
+  }
+</style>
+</head>
+<body>
+<div id="title">✦ Vagalume no Escuro ✦</div>
+<canvas id="gameCanvas" width="900" height="500"></canvas>
+<div id="controls">← → MOVER &nbsp;|&nbsp; SHIFT VOAR RÁPIDO &nbsp;|&nbsp; ELE BATE ASAS SOZINHO!</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
+
+const keys = {};
+document.addEventListener('keydown', e => {
+  if (gameFinished) { restartGame(); return; }
+  if (!gameStarted) { gameStarted = true; initAudio(); return; }
+  keys[e.code] = true; e.preventDefault();
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+canvas.addEventListener('click', () => {
+  if (gameFinished) { restartGame(); return; }
+  if (!gameStarted) { gameStarted = true; initAudio(); }
+});
+
+function restartGame() {
+  player.x = 80; player.y = 380; player.vx = 0; player.vy = 0;
+  camX = 0; jumpCount = 0; gameFinished = false; landingEffects = [];
+  currentPhase = 1; phaseNotifAlpha = 0; flashAlpha = 0;
+  shakeIntensity = 0; chromaticAlpha = 0; speedLineParticles = []; trailPositions = [];
+  for (const p of platforms) delete p._bx;
+  startAmbient(1);
+}
+
+const WORLD_W = 33000;
+
+// ── PLATAFORMAS ORIGINAIS ─────────────────────────────────────
+const platforms = [
+  // Chão com buracos
+  { x: 0,    y: 430, w: 700,  h: 20, type: 'ground' },
+  { x: 750,  y: 430, w: 400,  h: 20, type: 'ground' },
+  { x: 1200, y: 430, w: 600,  h: 20, type: 'ground' },
+  { x: 1900, y: 430, w: 500,  h: 20, type: 'ground' },
+  { x: 2500, y: 430, w: 800,  h: 20, type: 'ground' },
+  { x: 3400, y: 430, w: 600,  h: 20, type: 'ground' },
+  { x: 4100, y: 430, w: 900,  h: 20, type: 'ground' },
+
+  // Plataformas flutuantes
+  { x: 200,  y: 340, w: 140,  h: 14, type: 'plat' },
+  { x: 400,  y: 270, w: 120,  h: 14, type: 'plat' },
+  { x: 580,  y: 310, w: 100,  h: 14, type: 'plat' },
+  { x: 820,  y: 360, w: 130,  h: 14, type: 'plat' },
+  { x: 1000, y: 290, w: 120,  h: 14, type: 'plat' },
+  { x: 1150, y: 340, w: 100,  h: 14, type: 'plat' },
+  { x: 1320, y: 260, w: 150,  h: 14, type: 'plat' },
+  { x: 1530, y: 320, w: 100,  h: 14, type: 'plat' },
+  { x: 1680, y: 250, w: 120,  h: 14, type: 'plat' },
+  { x: 1960, y: 350, w: 110,  h: 14, type: 'plat' },
+  { x: 2100, y: 280, w: 130,  h: 14, type: 'plat' },
+  { x: 2280, y: 320, w: 100,  h: 14, type: 'plat' },
+  { x: 2600, y: 340, w: 140,  h: 14, type: 'plat' },
+  { x: 2800, y: 270, w: 120,  h: 14, type: 'plat' },
+  { x: 3000, y: 310, w: 100,  h: 14, type: 'plat' },
+  { x: 3200, y: 250, w: 130,  h: 14, type: 'plat' },
+  { x: 3500, y: 350, w: 120,  h: 14, type: 'plat' },
+  { x: 3700, y: 290, w: 110,  h: 14, type: 'plat' },
+  { x: 3900, y: 340, w: 130,  h: 14, type: 'plat' },
+  { x: 4200, y: 300, w: 150,  h: 14, type: 'plat' },
+  { x: 4450, y: 240, w: 120,  h: 14, type: 'plat' },
+  { x: 4680, y: 350, w: 200,  h: 14, type: 'plat' },
+
+  // ── FASE 2 — buracos progressivos, stepping stones calculados ─
+  // Gaps máx 180px: com SHIFT (5.5px/frame, pico ~250px) dá pra cruzar
+  // Stepping stones em y=355-390 (sempre atingíveis em queda)
+  { x: 5100, y: 430, w: 400,  h: 20, type: 'ground' }, // [gap 170]
+  { x: 5670, y: 430, w: 265,  h: 20, type: 'ground' }, // [gap 175]
+  { x: 6110, y: 430, w: 260,  h: 20, type: 'ground' }, // [gap 175]
+  { x: 6545, y: 430, w: 240,  h: 20, type: 'ground' }, // [gap 175]
+  { x: 6960, y: 430, w: 220,  h: 20, type: 'ground' }, // [gap 180]
+  { x: 7360, y: 430, w: 210,  h: 20, type: 'ground' }, // [gap 180]
+  { x: 7750, y: 430, w: 195,  h: 20, type: 'ground' }, // [gap 180]
+  { x: 8125, y: 430, w: 185,  h: 20, type: 'ground' }, // [gap 185]
+  { x: 8505, y: 430, w: 175,  h: 20, type: 'ground' }, // [gap 185]
+  { x: 8880, y: 430, w: 165,  h: 20, type: 'ground' }, // [gap 185]
+  { x: 9230, y: 430, w: 770,  h: 20, type: 'ground' }, // final
+
+  // Stepping stones por gap (y=355-390, sempre atingíveis em queda livre)
+  // Gap 5500-5670 (170px) — 2 pedras
+  { x: 5520, y: 370, w: 88,   h: 14, type: 'plat' },
+  { x: 5608, y: 390, w: 82,   h: 14, type: 'plat' },
+  // Gap 5935-6110 (175px) — 2 pedras
+  { x: 5955, y: 365, w: 86,   h: 14, type: 'plat' },
+  { x: 6042, y: 388, w: 82,   h: 14, type: 'plat' },
+  // Gap 6370-6545 (175px) — 2 pedras
+  { x: 6390, y: 362, w: 85,   h: 14, type: 'plat' },
+  { x: 6476, y: 386, w: 82,   h: 14, type: 'plat' },
+  // Gap 6785-6960 (175px) — 2 pedras
+  { x: 6805, y: 360, w: 84,   h: 14, type: 'plat' },
+  { x: 6890, y: 384, w: 80,   h: 14, type: 'plat' },
+  // Gap 7180-7360 (180px) — 3 pedras (começa ficar difícil)
+  { x: 7198, y: 357, w: 80,   h: 14, type: 'plat' },
+  { x: 7278, y: 375, w: 78,   h: 14, type: 'plat' },
+  { x: 7340, y: 394, w: 76,   h: 14, type: 'plat' },
+  // Gap 7570-7750 (180px) — 3 pedras
+  { x: 7588, y: 354, w: 78,   h: 14, type: 'plat' },
+  { x: 7666, y: 372, w: 76,   h: 14, type: 'plat' },
+  { x: 7729, y: 392, w: 76,   h: 14, type: 'plat' },
+  // Gap 7945-8125 (180px) — 3 pedras
+  { x: 7963, y: 352, w: 77,   h: 14, type: 'plat' },
+  { x: 8041, y: 370, w: 75,   h: 14, type: 'plat' },
+  { x: 8108, y: 390, w: 76,   h: 14, type: 'plat' },
+  // Gap 8310-8505 (195px) — 3 pedras (ficando pesado)
+  { x: 8328, y: 349, w: 76,   h: 14, type: 'plat' },
+  { x: 8405, y: 368, w: 74,   h: 14, type: 'plat' },
+  { x: 8472, y: 390, w: 76,   h: 14, type: 'plat' },
+  // Gap 8680-8880 (200px) — 3 pedras
+  { x: 8698, y: 346, w: 75,   h: 14, type: 'plat' },
+  { x: 8774, y: 365, w: 73,   h: 14, type: 'plat' },
+  { x: 8841, y: 388, w: 76,   h: 14, type: 'plat' },
+  // Gap 9045-9230 (185px) — 3 pedras (última antes do fim)
+  { x: 9063, y: 344, w: 75,   h: 14, type: 'plat' },
+  { x: 9140, y: 364, w: 73,   h: 14, type: 'plat' },
+  { x: 9207, y: 386, w: 74,   h: 14, type: 'plat' },
+  // ── FASE 3 — Cristal Elétrico — pedras mais estreitas, 2 por buraco ──
+  // Física: auto-pulo vy=-12.5, grav=0.55, SHIFT=5.5px/frame
+  // Buracos 185-205px; stones em y=340-378 (estreitas w=47-58px)
+  // Chão (y=430)
+  { x: 10000, y: 430, w: 350, h: 20, type: 'ground' }, // [gap 185]
+  { x: 10535, y: 430, w: 280, h: 20, type: 'ground' }, // [gap 190]
+  { x: 11005, y: 430, w: 250, h: 20, type: 'ground' }, // [gap 190]
+  { x: 11445, y: 430, w: 225, h: 20, type: 'ground' }, // [gap 195]
+  { x: 11865, y: 430, w: 200, h: 20, type: 'ground' }, // [gap 195]
+  { x: 12260, y: 430, w: 185, h: 20, type: 'ground' }, // [gap 200]
+  { x: 12645, y: 430, w: 170, h: 20, type: 'ground' }, // [gap 200]
+  { x: 13015, y: 430, w: 155, h: 20, type: 'ground' }, // [gap 200]
+  { x: 13370, y: 430, w: 140, h: 20, type: 'ground' }, // [gap 205]
+  { x: 13715, y: 430, w: 130, h: 20, type: 'ground' }, // [gap 205]
+  { x: 14050, y: 430, w: 950, h: 20, type: 'ground' }, // final!
+  // Stepping stones — 2 por buraco (y=358-378 e y=378-396), estreitas
+  // Gap 10350-10535 (185px)
+  { x: 10368, y: 358, w: 58, h: 14, type: 'plat' },
+  { x: 10428, y: 378, w: 56, h: 14, type: 'plat' },
+  // Gap 10815-11005 (190px)
+  { x: 10833, y: 356, w: 57, h: 14, type: 'plat' },
+  { x: 10893, y: 376, w: 55, h: 14, type: 'plat' },
+  // Gap 11255-11445 (190px)
+  { x: 11273, y: 354, w: 56, h: 14, type: 'plat' },
+  { x: 11331, y: 374, w: 54, h: 14, type: 'plat' },
+  // Gap 11670-11865 (195px)
+  { x: 11688, y: 352, w: 55, h: 14, type: 'plat' },
+  { x: 11745, y: 372, w: 53, h: 14, type: 'plat' },
+  // Gap 12065-12260 (195px)
+  { x: 12083, y: 350, w: 54, h: 14, type: 'plat' },
+  { x: 12139, y: 370, w: 52, h: 14, type: 'plat' },
+  // Gap 12445-12645 (200px)
+  { x: 12463, y: 348, w: 53, h: 14, type: 'plat' },
+  { x: 12518, y: 368, w: 51, h: 14, type: 'plat' },
+  // Gap 12815-13015 (200px)
+  { x: 12833, y: 346, w: 52, h: 14, type: 'plat' },
+  { x: 12887, y: 366, w: 50, h: 14, type: 'plat' },
+  // Gap 13170-13370 (200px)
+  { x: 13188, y: 344, w: 51, h: 14, type: 'plat' },
+  { x: 13241, y: 364, w: 49, h: 14, type: 'plat' },
+  // Gap 13510-13715 (205px)
+  { x: 13528, y: 342, w: 50, h: 14, type: 'plat' },
+  { x: 13580, y: 362, w: 48, h: 14, type: 'plat' },
+  // Gap 13845-14050 (205px)
+  { x: 13863, y: 340, w: 49, h: 14, type: 'plat' },
+  { x: 13914, y: 360, w: 47, h: 14, type: 'plat' },
+  // ── FASE 4 — Vazio Estelar — 18 buracos, 8000px, pedras estreitando ──
+  // Física: vy=-12.5, grav=0.55, SHIFT=5.5 — gaps 195-212px
+  // Chão (y=430) — seções ficam mais curtas com o progresso
+  { x:15000, y:430, w:320, h:20, type:'ground' }, // [gap 195]
+  { x:15515, y:430, w:285, h:20, type:'ground' }, // [gap 200]
+  { x:16000, y:430, w:260, h:20, type:'ground' }, // [gap 200]
+  { x:16460, y:430, w:240, h:20, type:'ground' }, // [gap 205]
+  { x:16905, y:430, w:220, h:20, type:'ground' }, // [gap 205]
+  { x:17330, y:430, w:200, h:20, type:'ground' }, // [gap 205]
+  { x:17735, y:430, w:182, h:20, type:'ground' }, // [gap 208]
+  { x:18125, y:430, w:165, h:20, type:'ground' }, // [gap 208]
+  { x:18498, y:430, w:150, h:20, type:'ground' }, // [gap 210]
+  { x:18858, y:430, w:135, h:20, type:'ground' }, // [gap 210]
+  { x:19203, y:430, w:122, h:20, type:'ground' }, // [gap 210]
+  { x:19535, y:430, w:110, h:20, type:'ground' }, // [gap 210]
+  { x:19855, y:430, w: 99, h:20, type:'ground' }, // [gap 212]
+  { x:20166, y:430, w: 88, h:20, type:'ground' }, // [gap 212]
+  { x:20466, y:430, w: 80, h:20, type:'ground' }, // [gap 212]
+  { x:20758, y:430, w: 75, h:20, type:'ground' }, // [gap 212]
+  { x:21045, y:430, w: 68, h:20, type:'ground' }, // [gap 212]
+  { x:21325, y:430, w: 65, h:20, type:'ground' }, // [gap 212]
+  { x:21602, y:430, w:1398,h:20, type:'ground' }, // final (longo para respirar)
+  // Stepping stones — 2 por gap, ficam mais estreitas e altas
+  // Gap 1 (15320-15515, 195px)
+  { x:15338, y:358, w:52, h:14, type:'plat' }, { x:15392, y:378, w:50, h:14, type:'plat' },
+  // Gap 2 (15800-16000, 200px)
+  { x:15818, y:357, w:51, h:14, type:'plat' }, { x:15871, y:377, w:49, h:14, type:'plat' },
+  // Gap 3 (16260-16460, 200px)
+  { x:16278, y:356, w:50, h:14, type:'plat' }, { x:16330, y:376, w:48, h:14, type:'plat' },
+  // Gap 4 (16700-16905, 205px)
+  { x:16718, y:354, w:49, h:14, type:'plat' }, { x:16769, y:374, w:47, h:14, type:'plat' },
+  // Gap 5 (17125-17330, 205px)
+  { x:17143, y:352, w:48, h:14, type:'plat' }, { x:17193, y:372, w:46, h:14, type:'plat' },
+  // Gap 6 (17530-17735, 205px)
+  { x:17548, y:350, w:47, h:14, type:'plat' }, { x:17597, y:370, w:45, h:14, type:'plat' },
+  // Gap 7 (17917-18125, 208px)
+  { x:17935, y:348, w:46, h:14, type:'plat' }, { x:17983, y:368, w:44, h:14, type:'plat' },
+  // Gap 8 (18290-18498, 208px)
+  { x:18308, y:346, w:45, h:14, type:'plat' }, { x:18355, y:366, w:43, h:14, type:'plat' },
+  // Gap 9 (18648-18858, 210px)
+  { x:18666, y:344, w:44, h:14, type:'plat' }, { x:18712, y:364, w:42, h:14, type:'plat' },
+  // Gap 10 (18993-19203, 210px)
+  { x:19011, y:342, w:43, h:14, type:'plat' }, { x:19056, y:362, w:41, h:14, type:'plat' },
+  // Gap 11 (19325-19535, 210px)
+  { x:19343, y:340, w:42, h:14, type:'plat' }, { x:19387, y:360, w:40, h:14, type:'plat' },
+  // Gap 12 (19645-19855, 210px)
+  { x:19663, y:338, w:41, h:14, type:'plat' }, { x:19706, y:358, w:39, h:14, type:'plat' },
+  // Gap 13 (19954-20166, 212px)
+  { x:19972, y:346, w:42, h:14, type:'plat' }, { x:20016, y:366, w:40, h:14, type:'plat' },
+  // Gap 14 (20254-20466, 212px)
+  { x:20272, y:344, w:41, h:14, type:'plat' }, { x:20315, y:364, w:39, h:14, type:'plat' },
+  // Gap 15 (20546-20758, 212px)
+  { x:20564, y:342, w:40, h:14, type:'plat' }, { x:20606, y:362, w:38, h:14, type:'plat' },
+  // Gap 16 (20833-21045, 212px)
+  { x:20851, y:340, w:39, h:14, type:'plat' }, { x:20892, y:360, w:38, h:14, type:'plat' },
+  // Gap 17 (21113-21325, 212px)
+  { x:21131, y:338, w:39, h:14, type:'plat' }, { x:21172, y:358, w:37, h:14, type:'plat' },
+  // Gap 18 (21390-21602, 212px)
+  { x:21408, y:336, w:38, h:14, type:'plat' }, { x:21448, y:356, w:37, h:14, type:'plat' },
+  // Plataformas decorativas na zona final (espaço aberto)
+  { x:15120, y:332, w:62, h:14, type:'plat' },
+  { x:15290, y:315, w:58, h:14, type:'plat' },
+  { x:21700, y:310, w:85, h:14, type:'plat' },
+  { x:21950, y:292, w:80, h:14, type:'plat' },
+  { x:22200, y:308, w:82, h:14, type:'plat' },
+  { x:22500, y:288, w:78, h:14, type:'plat' },
+  { x:22750, y:305, w:80, h:14, type:'plat' },
+
+  // Plataformas elevadas opcionais na Fase 3 (variedade visual)
+  { x: 10100, y: 338, w: 68, h: 14, type: 'plat' },
+  { x: 10260, y: 318, w: 62, h: 14, type: 'plat' },
+  { x: 10630, y: 330, w: 60, h: 14, type: 'plat' },
+  { x: 11090, y: 325, w: 58, h: 14, type: 'plat' },
+  { x: 11540, y: 320, w: 56, h: 14, type: 'plat' },
+  { x: 11950, y: 315, w: 54, h: 14, type: 'plat' },
+  { x: 12345, y: 312, w: 52, h: 14, type: 'plat' },
+  { x: 14200, y: 310, w: 88, h: 14, type: 'plat' },
+  { x: 14550, y: 295, w: 82, h: 14, type: 'plat' },
+  { x: 14780, y: 310, w: 88, h: 14, type: 'plat' },
+
+  // ── FASE 5 — Abismo Carmesim — 22 buracos, 10000px ──
+  // Mais difícil: buracos maiores (225-250px), pedras menores (18-30px),
+  // pedras mais ALTAS (y=300-375 — próximas ao pico de salto y=288!)
+  // Chão (y=430) — seções encolhem de 280→60px
+  { x:23000, y:430, w:280, h:20, type:'ground' }, // [gap 225]
+  { x:23505, y:430, w:262, h:20, type:'ground' }, // [gap 226]
+  { x:23993, y:430, w:244, h:20, type:'ground' }, // [gap 227]
+  { x:24464, y:430, w:228, h:20, type:'ground' }, // [gap 228]
+  { x:24920, y:430, w:214, h:20, type:'ground' }, // [gap 229]
+  { x:25363, y:430, w:200, h:20, type:'ground' }, // [gap 230]
+  { x:25793, y:430, w:186, h:20, type:'ground' }, // [gap 232]
+  { x:26211, y:430, w:174, h:20, type:'ground' }, // [gap 233]
+  { x:26618, y:430, w:162, h:20, type:'ground' }, // [gap 234]
+  { x:27014, y:430, w:150, h:20, type:'ground' }, // [gap 235]
+  { x:27399, y:430, w:140, h:20, type:'ground' }, // [gap 236]
+  { x:27775, y:430, w:130, h:20, type:'ground' }, // [gap 237]
+  { x:28142, y:430, w:120, h:20, type:'ground' }, // [gap 238]
+  { x:28500, y:430, w:111, h:20, type:'ground' }, // [gap 240]
+  { x:28851, y:430, w:103, h:20, type:'ground' }, // [gap 241]
+  { x:29195, y:430, w: 95, h:20, type:'ground' }, // [gap 242]
+  { x:29532, y:430, w: 88, h:20, type:'ground' }, // [gap 243]
+  { x:29863, y:430, w: 82, h:20, type:'ground' }, // [gap 244]
+  { x:30189, y:430, w: 76, h:20, type:'ground' }, // [gap 245]
+  { x:30510, y:430, w: 70, h:20, type:'ground' }, // [gap 246]
+  { x:30826, y:430, w: 65, h:20, type:'ground' }, // [gap 248]
+  { x:31139, y:430, w: 60, h:20, type:'ground' }, // [gap 250]
+  { x:31449, y:430, w:1551,h:20, type:'ground' }, // final longo
+  // ── 3 pedras por buraco — y cada vez mais ALTO (difícil de alcançar)
+  // Gaps 1-4: y=(340,358,375) aquecimento, pedras w=30-27
+  // Gap 1 (23280-23505)
+  { x:23288, y:340, w:30, h:14, type:'plat' },
+  { x:23377, y:358, w:30, h:14, type:'plat' },
+  { x:23467, y:375, w:30, h:14, type:'plat' },
+  // Gap 2 (23767-23993)
+  { x:23775, y:340, w:29, h:14, type:'plat' },
+  { x:23866, y:358, w:29, h:14, type:'plat' },
+  { x:23956, y:375, w:29, h:14, type:'plat' },
+  // Gap 3 (24237-24464)
+  { x:24245, y:340, w:28, h:14, type:'plat' },
+  { x:24336, y:358, w:28, h:14, type:'plat' },
+  { x:24428, y:375, w:28, h:14, type:'plat' },
+  // Gap 4 (24692-24920)
+  { x:24700, y:340, w:27, h:14, type:'plat' },
+  { x:24793, y:358, w:27, h:14, type:'plat' },
+  { x:24885, y:375, w:27, h:14, type:'plat' },
+  // Gaps 5-8: y=(330,350,368) ficando mais alto, pedras w=27-25
+  // Gap 5 (25134-25363)
+  { x:25142, y:330, w:27, h:14, type:'plat' },
+  { x:25235, y:350, w:27, h:14, type:'plat' },
+  { x:25328, y:368, w:27, h:14, type:'plat' },
+  // Gap 6 (25563-25793)
+  { x:25571, y:330, w:26, h:14, type:'plat' },
+  { x:25665, y:350, w:26, h:14, type:'plat' },
+  { x:25759, y:368, w:26, h:14, type:'plat' },
+  // Gap 7 (25979-26211)
+  { x:25987, y:330, w:25, h:14, type:'plat' },
+  { x:26083, y:350, w:25, h:14, type:'plat' },
+  { x:26178, y:368, w:25, h:14, type:'plat' },
+  // Gap 8 (26385-26618)
+  { x:26393, y:330, w:25, h:14, type:'plat' },
+  { x:26489, y:350, w:25, h:14, type:'plat' },
+  { x:26585, y:368, w:25, h:14, type:'plat' },
+  // Gaps 9-12: y=(320,340,360) — muito difícil, pedras w=24-23
+  // Gap 9 (26780-27014)
+  { x:26788, y:320, w:24, h:14, type:'plat' },
+  { x:26885, y:340, w:24, h:14, type:'plat' },
+  { x:26982, y:360, w:24, h:14, type:'plat' },
+  // Gap 10 (27164-27399)
+  { x:27172, y:320, w:24, h:14, type:'plat' },
+  { x:27269, y:340, w:24, h:14, type:'plat' },
+  { x:27367, y:360, w:24, h:14, type:'plat' },
+  // Gap 11 (27539-27775)
+  { x:27547, y:320, w:23, h:14, type:'plat' },
+  { x:27646, y:340, w:23, h:14, type:'plat' },
+  { x:27744, y:360, w:23, h:14, type:'plat' },
+  // Gap 12 (27905-28142)
+  { x:27913, y:320, w:23, h:14, type:'plat' },
+  { x:28012, y:340, w:23, h:14, type:'plat' },
+  { x:28111, y:360, w:23, h:14, type:'plat' },
+  // Gaps 13-16: y=(312,332,352) — brutal, pedras w=22-21
+  // Gap 13 (28262-28500)
+  { x:28270, y:312, w:22, h:14, type:'plat' },
+  { x:28370, y:332, w:22, h:14, type:'plat' },
+  { x:28470, y:352, w:22, h:14, type:'plat' },
+  // Gap 14 (28611-28851)
+  { x:28619, y:312, w:22, h:14, type:'plat' },
+  { x:28720, y:332, w:22, h:14, type:'plat' },
+  { x:28821, y:352, w:22, h:14, type:'plat' },
+  // Gap 15 (28954-29195)
+  { x:28962, y:312, w:21, h:14, type:'plat' },
+  { x:29064, y:332, w:21, h:14, type:'plat' },
+  { x:29166, y:352, w:21, h:14, type:'plat' },
+  // Gap 16 (29290-29532)
+  { x:29298, y:312, w:21, h:14, type:'plat' },
+  { x:29401, y:332, w:21, h:14, type:'plat' },
+  { x:29503, y:352, w:21, h:14, type:'plat' },
+  // Gaps 17-19: y=(306,327,348) — perto do pico!, pedras w=20-19
+  // Gap 17 (29620-29863)
+  { x:29628, y:306, w:20, h:14, type:'plat' },
+  { x:29731, y:327, w:20, h:14, type:'plat' },
+  { x:29835, y:348, w:20, h:14, type:'plat' },
+  // Gap 18 (29945-30189)
+  { x:29953, y:306, w:20, h:14, type:'plat' },
+  { x:30057, y:327, w:20, h:14, type:'plat' },
+  { x:30161, y:348, w:20, h:14, type:'plat' },
+  // Gap 19 (30265-30510)
+  { x:30273, y:306, w:19, h:14, type:'plat' },
+  { x:30378, y:327, w:19, h:14, type:'plat' },
+  { x:30483, y:348, w:19, h:14, type:'plat' },
+  // Gaps 20-22: y=(300,322,344) — EXTREMO, 12px do pico!, pedras w=19-18
+  // Gap 20 (30580-30826)
+  { x:30588, y:300, w:19, h:14, type:'plat' },
+  { x:30694, y:322, w:19, h:14, type:'plat' },
+  { x:30799, y:344, w:19, h:14, type:'plat' },
+  // Gap 21 (30891-31139)
+  { x:30899, y:300, w:18, h:14, type:'plat' },
+  { x:31006, y:322, w:18, h:14, type:'plat' },
+  { x:31113, y:344, w:18, h:14, type:'plat' },
+  // Gap 22 (31199-31449) — o mais difícil do jogo!
+  { x:31207, y:300, w:18, h:14, type:'plat' },
+  { x:31315, y:322, w:18, h:14, type:'plat' },
+  { x:31423, y:344, w:18, h:14, type:'plat' },
+  // Plataformas decorativas na zona final (respiro heroico)
+  { x:31600, y:345, w:72, h:14, type:'plat' },
+  { x:31860, y:318, w:68, h:14, type:'plat' },
+  { x:32130, y:338, w:65, h:14, type:'plat' },
+  { x:32400, y:305, w:62, h:14, type:'plat' },
+  { x:32660, y:325, w:65, h:14, type:'plat' },
+
+  // Plataformas opcionais dentro das secções de chão (variedade visual)
+  { x: 5220, y: 350, w: 88,   h: 14, type: 'plat' },
+  { x: 5420, y: 335, w: 82,   h: 14, type: 'plat' },
+  { x: 5750, y: 345, w: 84,   h: 14, type: 'plat' },
+  { x: 6200, y: 340, w: 82,   h: 14, type: 'plat' },
+  { x: 6640, y: 342, w: 80,   h: 14, type: 'plat' },
+  { x: 7060, y: 338, w: 78,   h: 14, type: 'plat' },
+  { x: 7460, y: 335, w: 78,   h: 14, type: 'plat' },
+  { x: 7850, y: 332, w: 76,   h: 14, type: 'plat' },
+  { x: 9350, y: 340, w: 88,   h: 14, type: 'plat' },
+  { x: 9580, y: 325, w: 85,   h: 14, type: 'plat' },
+  { x: 9780, y: 345, w: 90,   h: 14, type: 'plat' },
+];
+
+// ── DECORAÇÃO — caverna orgânica em 3 camadas ────────────────
+const _r = (a,b) => a + Math.random()*(b-a);
+const bgDecor = [];
+// Layer 0: mounds distantes grandes (parallax lento 0.12)
+for (let x = -100; x < WORLD_W+500; x += _r(360,620))
+  bgDecor.push({ x, layer:0, w:_r(240,480), h:_r(100,210), s:Math.random() });
+// Layer 1: estalactites do teto (parallax 0.45)
+for (let x = 0; x < WORLD_W; x += _r(90,200))
+  bgDecor.push({ x:x+_r(-15,15), layer:1, w:_r(5,16), h:_r(22,130), s:Math.random() });
+// Layer 2: rochas do chão (parallax 0.55)
+for (let x = 0; x < WORLD_W; x += _r(120,260))
+  bgDecor.push({ x:x+_r(-20,20), layer:2, w:_r(18,55), h:_r(12,65), s:Math.random() });
+
+// ── PÓ ATMOSFÉRICO ────────────────────────────────────────────
+const bgDust = Array.from({length:28}, () => ({
+  x: Math.random()*WORLD_W, y: 30+Math.random()*400,
+  vx:(Math.random()-0.5)*0.22, vy:-0.06-Math.random()*0.14,
+  size:0.7+Math.random()*1.8, alpha:0.07+Math.random()*0.22
+}));
+
+// ── PARTÍCULAS ───────────────────────────────────────────────
+class Particle {
+  constructor(x, y) { this.reset(x, y); }
+  reset(x, y) {
+    this.x = x + (Math.random()-0.5)*4;
+    this.y = y;
+    this.vx = (Math.random()-0.5)*0.6;
+    this.vy = -(0.4 + Math.random()*0.8);
+    this.life = 1;
+    this.decay = 0.018 + Math.random()*0.025;
+    this.size = 1.5 + Math.random()*2;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    this.vy *= 0.98;
+    this.vx += (Math.random()-0.5)*0.15;
+    this.life -= this.decay;
+  }
+  draw(ox) {
+    ctx.save();
+    ctx.globalAlpha = this.life * 0.9;
+    const t = 1 - this.life;
+    const g = ctx.createRadialGradient(this.x-ox, this.y, 0, this.x-ox, this.y, this.size);
+    g.addColorStop(0, `rgb(${Math.floor(200-t*100)},255,${Math.floor(60-t*60)})`);
+    g.addColorStop(1, 'rgba(50,200,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(this.x-ox, this.y, this.size, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ── ESTADO ───────────────────────────────────────────────────
+const player = {
+  x: 80, y: 380,
+  w: 22, h: 44,
+  vx: 0, vy: 0,
+  onGround: false,
+  facing: 1,
+  walkFrame: 0,
+  flickerPhase: 0,
+};
+
+const particles = Array.from({length: 14}, () => new Particle(player.x + player.w/2, player.y + player.h - 8));
+let camX = 0;
+let flashAlpha = 0;
+let currentPhase = 1;
+let phaseNotifAlpha = 0;
+let tick = 0;
+let gameStarted = false;
+let jumpCount = 0;
+let gameFinished = false;
+let landingEffects = [];
+
+// ── NOVOS EFEITOS VISUAIS ────────────────────────────────────
+let shakeX = 0, shakeY = 0, shakeIntensity = 0;
+let chromaticAlpha = 0;
+let speedLineParticles = [];
+let trailPositions = [];
+let phaseFlashAlpha = 0, phaseFlashColor = '#00e8c8';
+
+function getPhase() {
+  if (player.x >= 23000) return 5;
+  if (player.x >= 15000) return 4;
+  if (player.x >= 10000) return 3;
+  if (player.x >= 5000) return 2;
+  return 1;
+}
+
+// ── FÍSICA ───────────────────────────────────────────────────
+function updatePhysics() {
+  const speed = (keys['ShiftLeft'] || keys['ShiftRight']) ? 5.5 : 3.0;
+  let moving = false;
+
+  if (keys['ArrowLeft'] || keys['KeyA']) {
+    player.vx = -speed; player.facing = -1; moving = true;
+  } else if (keys['ArrowRight'] || keys['KeyD']) {
+    player.vx = speed;  player.facing =  1; moving = true;
+  } else {
+    player.vx *= 0.75;
+  }
+
+  if (moving && player.onGround) player.walkFrame++;
+
+  player.vy += 0.55;
+  if (player.vy > 18) player.vy = 18;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  if (player.x < 0) player.x = 0;
+  if (player.x > WORLD_W - player.w) player.x = WORLD_W - player.w;
+
+  // Plataformas móveis (Fase 5) — atualiza posições antes da colisão
+  for (const p of platforms) {
+    if (p.mvx !== undefined) {
+      if (p._bx === undefined) p._bx = p.x;
+      p.x += p.mvx;
+      if (Math.abs(p.x - p._bx) > p.mvr) p.mvx = -p.mvx;
+    }
+  }
+
+  // Colisão — ÚNICA MUDANÇA: pula automaticamente ao tocar
+  player.onGround = false;
+  for (const p of platforms) {
+    const inX = player.x + player.w > p.x && player.x < p.x + p.w;
+    const wasAbove = (player.y + player.h - player.vy) <= p.y + 4;
+    if (inX && wasAbove && player.y + player.h >= p.y && player.y + player.h <= p.y + 20 && player.vy >= 0) {
+      player.y = p.y - player.h;
+      player.vy = -12.5;   // ← auto-pulo
+      player.onGround = true;
+      jumpCount++;
+      if (p.type !== 'ground') shakeIntensity = Math.max(shakeIntensity, 3); // Mini shake ao pousar em plataformas
+      landingEffects.push({px: p.x, py: p.y, pw: p.w, ht: p.h, cx: player.x + player.w/2, t: 0, ph: getPhase()});
+      sfxJump();
+      break;
+    }
+    // Bate no teto
+    if (inX && player.y < p.y + p.h && player.y > p.y - 10 && player.vy < 0) {
+      player.vy = 0; player.y = p.y + p.h;
+    }
+  }
+
+  // Caiu no buraco → reseta com efeitos visuais
+  if (player.y > H + 100) {
+    flashAlpha = 0.9;
+    shakeIntensity = 18; // SCREEN SHAKE na morte
+    chromaticAlpha = 1.0; // ABERRAÇÃO CROMÁTICA na morte
+    sfxDeath();
+    const ph3 = getPhase(); const spawnX = ph3===5 ? 23100 : ph3===4 ? 15100 : ph3===3 ? 10100 : ph3===2 ? 5100 : 80;
+    player.x = spawnX; player.y = 380; player.vx = 0; player.vy = 0;
+    trailPositions = []; // Limpa trail
+  }
+}
+
+function updateCamera() {
+  const target = player.x - W/2 + player.w/2;
+  camX += (target - camX) * 0.1;
+  if (camX < 0) camX = 0;
+  if (camX > WORLD_W - W) camX = WORLD_W - W;
+}
+
+function updateParticles() {
+  const cx = player.x + player.w/2;
+  const cy = player.y + player.h - 8;
+  for (const p of particles) {
+    p.update();
+    if (p.life <= 0) p.reset(cx, cy);
+  }
+}
+
+function updateBgDust() {
+  for (const d of bgDust) {
+    d.x += d.vx; d.y += d.vy;
+    if (d.y < -5)  { d.y = H + 5;  d.x = camX + Math.random()*W; }
+    if (d.x < camX - 200) d.x = camX + W + 50;
+    if (d.x > camX + W + 200) d.x = camX - 50;
+  }
+}
+
+// ── DESENHO ──────────────────────────────────────────────────
+function drawBG() {
+  function mtn(wx0,yBase,sc,fr,col,alp) {
+    ctx.save(); ctx.globalAlpha=alp; ctx.fillStyle=col; ctx.beginPath();
+    const steps=Math.ceil(W/4)+2; ctx.moveTo(0,H);
+    for (let i=0; i<=steps; i++) {
+      const sx=i*(W/steps), wx=(wx0+sx)*sc+T*fr;
+      const y=yBase+Math.sin(wx*0.73)*48*sc+Math.sin(wx*1.31)*28*sc+Math.sin(wx*2.57)*14*sc+Math.sin(wx*0.18)*72*sc;
+      ctx.lineTo(sx,y);
+    }
+    ctx.lineTo(W,H); ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+  const rawPh = getPhase();
+  const phase = rawPh;
+  const T = tick * 0.018;
+
+  // ===============================================================
+  //  FASE 1 — Noite Gotica
+  // ===============================================================
+  if (phase === 1) {
+    const sky=ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'#06030f'); sky.addColorStop(0.45,'#130a2a'); sky.addColorStop(1,'#1a0f10');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+
+    // Estrelas
+    for (let i=0; i<120; i++) {
+      const sx=d_s(i*31)*W, sy=d_s(i*31+1)*H*0.72;
+      const sa=0.4+0.6*d_s(i*31+2)+0.25*Math.sin(T*1.3+i);
+      ctx.globalAlpha=sa; ctx.fillStyle='#fff';
+      ctx.beginPath(); ctx.arc(sx,sy,d_s(i*31+3)*1.6+0.4,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+
+    // Lua com halo
+    const moonX=W*0.15+(-camX)*0.008, moonY=H*0.18;
+    ctx.save(); ctx.globalCompositeOperation='screen';
+    const mHalo=ctx.createRadialGradient(moonX,moonY,18,moonX,moonY,90);
+    mHalo.addColorStop(0,'rgba(220,210,170,0.30)'); mHalo.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=mHalo; ctx.beginPath(); ctx.arc(moonX,moonY,90,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle='#d8cc99'; ctx.beginPath(); ctx.arc(moonX,moonY,22,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#c0b880'; ctx.beginPath(); ctx.arc(moonX+6,moonY-4,16,0,Math.PI*2); ctx.fill();
+
+    // Nuvens tempestuosas
+    ctx.save(); ctx.globalAlpha=0.75;
+    for (let i=0; i<8; i++) {
+      const csx=((d_s(i*19)*2800+(-camX)*0.12+T*18)%2800)-400;
+      if (csx<-200||csx>W+200) continue;
+      const csy=40+d_s(i*19+1)*80, cr=70+d_s(i*19+2)*50;
+      const cg=ctx.createRadialGradient(csx,csy,0,csx,csy,cr);
+      cg.addColorStop(0,'rgba(35,20,55,0.9)'); cg.addColorStop(1,'rgba(10,5,20,0)');
+      ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(csx,csy,cr,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+
+    // Montanhas distantes (parallax)
+    const off1=(-camX)*0.022;
+    mtn(off1, H*0.48, 0.00012, 0, '#0e071a', 0.92);
+    mtn(off1*1.4, H*0.55, 0.00018, 0, '#120d20', 0.85);
+
+    // Castelo gotico
+    const castX=W*0.5+(-camX)*0.04, castY=H*0.72;
+    ctx.fillStyle='#09040f';
+    ctx.fillRect(castX-14,castY-110,28,110);
+    for (let b=-3; b<=3; b++) ctx.fillRect(castX+b*9-4,castY-118,7,14);
+    for (const [tx,ty] of [[-55,70],[-35,50],[35,50],[55,70]]) {
+      ctx.fillRect(castX+tx-8,castY-ty,16,ty);
+      for (let b=-1; b<=1; b++) ctx.fillRect(castX+tx+b*8-3,castY-ty-8,6,10);
+    }
+    ctx.beginPath(); ctx.arc(castX,castY-14,12,Math.PI,0); ctx.fill();
+    ctx.fillRect(castX-12,castY-14,24,14);
+    ctx.save(); ctx.globalCompositeOperation='screen';
+    for (const [wx,wy] of [[castX-6,castY-72],[castX+6,castY-72],[castX-6,castY-50],[castX+6,castY-50]]) {
+      const wg=ctx.createRadialGradient(wx,wy,0,wx,wy,12);
+      wg.addColorStop(0,'rgba(255,210,60,0.7)'); wg.addColorStop(1,'rgba(255,120,0,0)');
+      ctx.fillStyle=wg; ctx.beginPath(); ctx.arc(wx,wy,12,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+
+    // Floresta de arvores mortas
+    const off2=(-camX)*0.055;
+    ctx.fillStyle='#0b0614';
+    for (let i=0; i<22; i++) {
+      const tx=((d_s(i*41)*28000+off2)%28000)/28000*W;
+      if (tx<-10||tx>W+10) continue;
+      const th=60+d_s(i*41+1)*80;
+      ctx.fillRect(tx-3,H-th,6,th);
+      for (let b=0; b<3; b++) {
+        const by2=H-th*(0.5+b*0.18);
+        const blen=(18+d_s(i*41+b+2)*22)*(b%2?1:-1);
+        ctx.save();
+        ctx.strokeStyle='#0b0614'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(tx,by2); ctx.lineTo(tx+blen,by2-12-b*4); ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // Nevoa do chao
+    const fog=ctx.createLinearGradient(0,H*0.78,0,H);
+    fog.addColorStop(0,'rgba(0,0,0,0)'); fog.addColorStop(1,'rgba(18,8,30,0.78)');
+    ctx.fillStyle=fog; ctx.fillRect(0,H*0.78,W,H*0.22);
+
+    // Morcegos
+    for (let i=0; i<6; i++) {
+      const bx=(T*35*(1+i*0.3)+d_s(i*7)*W*2)%(W*2)-W*0.5;
+      const by2=H*0.12+d_s(i*7+1)*H*0.28+Math.sin(T*1.1+i*2.1)*18;
+      const bflap=Math.sin(T*4.5+i*1.8);
+      ctx.save(); ctx.fillStyle='#1a0a28';
+      ctx.beginPath();
+      ctx.moveTo(bx,by2);
+      ctx.quadraticCurveTo(bx-18,by2-12*bflap,bx-28,by2+4);
+      ctx.quadraticCurveTo(bx-12,by2+6,bx,by2+2);
+      ctx.quadraticCurveTo(bx+12,by2+6,bx+28,by2+4);
+      ctx.quadraticCurveTo(bx+18,by2-12*bflap,bx,by2);
+      ctx.fill(); ctx.restore();
+    }
+  }
+
+  // ===============================================================
+  //  FASE 2 — Fundo do Mar
+  // ===============================================================
+  else if (phase === 2) {
+    const sky=ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'#001830'); sky.addColorStop(0.4,'#002848'); sky.addColorStop(1,'#003060');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+
+    // Raios de luz da superficie
+    ctx.save(); ctx.globalCompositeOperation='screen';
+    for (let i=0; i<8; i++) {
+      const rx=W*0.08+i*(W*0.115)+Math.sin(T*0.4+i)*22;
+      const ra=0.07+0.05*Math.sin(T*0.6+i*1.3);
+      const rg=ctx.createLinearGradient(rx,0,rx+30,H);
+      rg.addColorStop(0,`rgba(80,180,220,${ra})`);
+      rg.addColorStop(1,'rgba(0,80,140,0)');
+      ctx.fillStyle=rg;
+      ctx.beginPath(); ctx.moveTo(rx-20,0); ctx.lineTo(rx+20,0); ctx.lineTo(rx+60,H); ctx.lineTo(rx+20,H); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+
+    // Penhascos subaquaticos (parallax)
+    const off1=(-camX)*0.018;
+    mtn(off1, H*0.55, 0.00014, 0, '#001425', 0.9);
+    mtn(off1*1.5, H*0.62, 0.00020, 0, '#001c30', 0.85);
+
+    // Corais
+    const off2=(-camX)*0.065;
+    for (let i=0; i<14; i++) {
+      const cx=((d_s(i*29)*28000+off2)%28000)/28000*W;
+      if (cx<-20||cx>W+20) continue;
+      const ch=40+d_s(i*29+1)*60;
+      const ctype=Math.floor(d_s(i*29+2)*3);
+      ctx.fillStyle=`hsl(${[350,15,330][ctype]},70%,35%)`;
+      if (ctype===0) {
+        ctx.fillRect(cx-4,H-ch,8,ch);
+        ctx.fillRect(cx-14,H-ch*0.65,10,ch*0.35);
+        ctx.fillRect(cx+4,H-ch*0.55,10,ch*0.25);
+      } else if (ctype===1) {
+        for (let b=0; b<5; b++) {
+          const bx=cx+Math.sin(b*0.7)*18;
+          ctx.fillRect(bx-2,H-ch*(0.3+b*0.15),4,ch*(0.3+b*0.15));
+        }
+      } else {
+        ctx.beginPath(); ctx.ellipse(cx,H-ch,22,12,0,0,Math.PI*2); ctx.fill();
+        ctx.fillRect(cx-5,H-ch,10,ch);
+      }
+    }
+
+    // Algas marinhas (kelp)
+    const off3=(-camX)*0.08;
+    for (let i=0; i<18; i++) {
+      const kx=((d_s(i*53)*28000+off3)%28000)/28000*W;
+      if (kx<-5||kx>W+5) continue;
+      const kh=70+d_s(i*53+1)*100;
+      const ksway=Math.sin(T*0.9+i*1.4)*14;
+      ctx.strokeStyle=`rgba(20,${100+Math.floor(d_s(i*53+2)*60)},40,0.85)`;
+      ctx.lineWidth=3+d_s(i*53+3)*2;
+      ctx.beginPath(); ctx.moveTo(kx,H);
+      for (let s=1; s<=6; s++) {
+        const ky=H-kh*s/6;
+        ctx.quadraticCurveTo(kx+ksway*(s%2?1:-1),ky+kh/12,kx+ksway*0.6*(s%2?1:-1),ky);
+      }
+      ctx.stroke();
+    }
+
+    // Bolhas
+    for (let i=0; i<30; i++) {
+      const bphase=(T*0.6+d_s(i*17)*10)%10;
+      const bx=d_s(i*17+1)*W+Math.sin(T+i)*8;
+      const by=H-(bphase/10)*H*1.1;
+      if (by<-10||by>H+10) continue;
+      ctx.save(); ctx.globalAlpha=0.45+d_s(i*17+3)*0.3;
+      ctx.strokeStyle='rgba(150,220,255,0.8)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(bx,by,2+d_s(i*17+2)*5,0,Math.PI*2); ctx.stroke();
+      ctx.restore();
+    }
+
+  }
+
+  // ===============================================================
+  //  FASE 3 — Tempestade Eletrica / Cidade
+  // ===============================================================
+  else if (phase === 3) {
+    const sky=ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'#050914'); sky.addColorStop(0.5,'#0c1828'); sky.addColorStop(0.85,'#12202e'); sky.addColorStop(1,'#0e1a10');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+
+    // Brilho de horizonte urbano
+    const hGlow=ctx.createLinearGradient(0,H*0.55,0,H*0.75);
+    hGlow.addColorStop(0,'rgba(255,160,40,0.18)'); hGlow.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=hGlow; ctx.fillRect(0,H*0.55,W,H*0.20);
+
+    // Nuvens de tempestade
+    for (let i=0; i<10; i++) {
+      const csx=(d_s(i*23)*W*3+T*22*(1+d_s(i*23+1)*0.8))%(W*3)-W;
+      if (csx<-250||csx>W+250) continue;
+      const csy=20+d_s(i*23+2)*90, cr=90+d_s(i*23+3)*70;
+      const cg=ctx.createRadialGradient(csx,csy,0,csx,csy,cr);
+      cg.addColorStop(0,`rgba(14,20,36,${0.55+d_s(i*23+4)*0.3})`); cg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(csx,csy,cr,0,Math.PI*2); ctx.fill();
+    }
+
+    // Skyline distante
+    const off1=(-camX)*0.025;
+    ctx.fillStyle='#0a111e';
+    for (let i=0; i<28; i++) {
+      const bx=((d_s(i*37)*28000+off1)%28000)/28000*W;
+      if (bx<-30||bx>W+30) continue;
+      ctx.fillRect(bx-(14+d_s(i*37+1)*24)/2,H-H*0.32-(30+d_s(i*37+2)*70),14+d_s(i*37+1)*24,30+d_s(i*37+2)*70);
+    }
+
+    // Edificios medios com janelas iluminadas
+    const off2=(-camX)*0.065;
+    ctx.fillStyle='#070d18';
+    for (let i=0; i<18; i++) {
+      const bx=((d_s(i*43)*28000+off2)%28000)/28000*W;
+      if (bx<-40||bx>W+40) continue;
+      const bw=22+d_s(i*43+1)*32, bh=55+d_s(i*43+2)*100;
+      ctx.fillRect(bx-bw/2,H-H*0.22-bh,bw,bh);
+      ctx.save(); ctx.globalCompositeOperation='screen';
+      for (let wr=0; wr<4; wr++) {
+        for (let wc=0; wc<Math.floor(bw/10); wc++) {
+          if (d_s(i*43+wr*10+wc+5)<0.45) continue;
+          const wx2=bx-bw/2+wc*10+3, wy2=H-H*0.22-bh+wr*18+8;
+          const wg=ctx.createRadialGradient(wx2,wy2,0,wx2,wy2,8);
+          wg.addColorStop(0,`rgba(255,${180+d_s(i*43+wr+wc)*60|0},60,${0.4+d_s(i*43+wr+wc+6)*0.4})`);
+          wg.addColorStop(1,'rgba(0,0,0,0)');
+          ctx.fillStyle=wg; ctx.beginPath(); ctx.arc(wx2,wy2,8,0,Math.PI*2); ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+
+    // Chuva diagonal
+    ctx.save(); ctx.globalAlpha=0.35; ctx.strokeStyle='rgba(160,200,255,0.7)'; ctx.lineWidth=1;
+    for (let i=0; i<80; i++) {
+      const rx=((d_s(i*11)*W*1.5+T*120)%(W*1.5))-W*0.25;
+      const ry=((d_s(i*11+1)*H*1.5+T*200)%(H*1.5))-H*0.25;
+      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx+6,ry+14); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Relampago ocasional
+    if (Math.sin(T*3.1)*Math.sin(T*7.3)>0.82) {
+      ctx.save(); ctx.globalCompositeOperation='screen';
+      ctx.fillStyle='rgba(180,220,255,0.15)'; ctx.fillRect(0,0,W,H);
+      let lx=W*0.3+Math.sin(T*5)*W*0.4, ly=0;
+      ctx.strokeStyle='rgba(200,230,255,0.9)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(lx,ly);
+      for (let s=0; s<8; s++) { lx+=(d_s(s*17+99)-0.5)*30; ly+=H/8; ctx.lineTo(lx,ly); }
+      ctx.stroke(); ctx.restore();
+    }
+
+  }
+
+  // ===============================================================
+  //  FASE 4 — Vazio Cosmico
+  // ===============================================================
+  else if (phase === 4) {
+    const sky=ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'#000005'); sky.addColorStop(0.5,'#050010'); sky.addColorStop(1,'#080018');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+
+    // Campo de estrelas
+    for (let i=0; i<220; i++) {
+      const sx=d_s(i*19)*W, sy=d_s(i*19+1)*H;
+      const sa=0.3+0.7*d_s(i*19+2)+0.2*Math.sin(T*1.5+i*0.8);
+      ctx.globalAlpha=sa; ctx.fillStyle='#fff';
+      ctx.beginPath(); ctx.arc(sx,sy,d_s(i*19+3)*1.8+0.3,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+
+    // Nebulosa colorida
+    ctx.save(); ctx.globalCompositeOperation='screen';
+    for (const [nc,nx,ny] of [['rgba(120,0,80,0.12)',W*0.10,H*0.15],['rgba(0,60,160,0.10)',W*0.32,H*0.27],['rgba(180,80,0,0.09)',W*0.54,H*0.39],['rgba(0,100,80,0.08)',W*0.76,H*0.51]]) {
+      const nr=120+Math.floor(nx/W*120);
+      const ng=ctx.createRadialGradient(nx,ny,0,nx,ny,nr);
+      ng.addColorStop(0,nc); ng.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=ng; ctx.beginPath(); ctx.arc(nx,ny,nr,0,Math.PI*2); ctx.fill();
+    }
+    for (let i=0; i<10; i++) {
+      const fx=d_s(i*61)*W, fy=d_s(i*61+1)*H*0.8;
+      const fw=60+d_s(i*61+2)*100, fh=8+d_s(i*61+3)*12;
+      const fa=0.04+d_s(i*61+4)*0.06;
+      ctx.fillStyle=`rgba(${[140,0,180][i%3]},${[40,100,60][i%3]},${[200,160,80][i%3]},${fa})`;
+      ctx.save(); ctx.translate(fx,fy); ctx.rotate(d_s(i*61+5)*Math.PI);
+      ctx.fillRect(-fw/2,-fh/2,fw,fh); ctx.restore();
+    }
+    ctx.restore();
+
+    // ── PLANETA SATURNO ─────────────────────────────────────────
+    const px=W*0.62+(-camX)*0.003, py=H*0.28, pr=62;
+
+    // Glow atmosférico externo (multi-camada)
+    ctx.save(); ctx.globalCompositeOperation='screen';
+    for (const [r,g,b,ri,ro,a] of [
+      [100,140,255, pr*0.8, pr*3.5, 0.08],
+      [60, 90,220, pr*1.0, pr*2.2, 0.12],
+      [140,180,255, pr*0.5, pr*1.4, 0.06]
+    ]) {
+      const g2=ctx.createRadialGradient(px,py,ri,px,py,ro);
+      g2.addColorStop(0,`rgba(${r},${g},${b},${a})`); g2.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(px,py,ro,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+
+    // Anéis traseiros (atrás do planeta)
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(px,py,pr*2.35,pr*0.28,0,Math.PI,Math.PI*2); ctx.clip();
+    const ringData = [
+      [pr*1.22, pr*0.145, 8,  'rgba(210,185,130,0.55)'],
+      [pr*1.38, pr*0.165, 14, 'rgba(235,215,160,0.70)'],
+      [pr*1.52, pr*0.178, 5,  'rgba(180,155,100,0.35)'], // Cassini gap
+      [pr*1.62, pr*0.190, 18, 'rgba(245,225,170,0.80)'],
+      [pr*1.78, pr*0.205, 10, 'rgba(220,195,140,0.60)'],
+      [pr*1.92, pr*0.218, 7,  'rgba(190,165,110,0.40)'],
+      [pr*2.08, pr*0.230, 4,  'rgba(160,135,85,0.25)'],
+      [pr*2.22, pr*0.240, 3,  'rgba(140,115,70,0.15)'],
+    ];
+    for (const [ra,rb,lw,col] of ringData) {
+      ctx.strokeStyle=col; ctx.lineWidth=lw;
+      ctx.beginPath(); ctx.ellipse(px,py,ra,rb,0,0,Math.PI*2); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Corpo do planeta
+    const pGrad=ctx.createRadialGradient(px-pr*0.32,py-pr*0.35,pr*0.04,px,py,pr);
+    pGrad.addColorStop(0.00,'#c8d8ff');
+    pGrad.addColorStop(0.12,'#8aaaf0');
+    pGrad.addColorStop(0.30,'#4870d8');
+    pGrad.addColorStop(0.55,'#2848a8');
+    pGrad.addColorStop(0.78,'#102080');
+    pGrad.addColorStop(1.00,'#050e40');
+    ctx.beginPath(); ctx.arc(px,py,pr,0,Math.PI*2);
+    ctx.fillStyle=pGrad; ctx.fill();
+
+    // Faixas de nuvens animadas
+    ctx.save(); ctx.beginPath(); ctx.arc(px,py,pr,0,Math.PI*2); ctx.clip();
+    ctx.globalCompositeOperation='screen';
+    const bands = [
+      [py-pr*0.55, pr*0.10, 0.06, 'rgba(180,210,255,1)'],
+      [py-pr*0.28, pr*0.07, 0.04, 'rgba(140,180,255,1)'],
+      [py+pr*0.05, pr*0.09, 0.05, 'rgba(160,200,255,1)'],
+      [py+pr*0.38, pr*0.06, 0.03, 'rgba(120,160,240,1)'],
+      [py+pr*0.62, pr*0.05, 0.025,'rgba(100,140,220,1)'],
+    ];
+    for (const [by2,bry,ba,bc] of bands) {
+      const wave = Math.sin(T*0.15)*3;
+      ctx.strokeStyle=bc; ctx.lineWidth=bry*2; ctx.globalAlpha=ba;
+      ctx.beginPath(); ctx.ellipse(px,by2+wave,pr*0.98,bry,0,0,Math.PI*2); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Borda de atmosfera (rim light)
+    ctx.save(); ctx.globalCompositeOperation='screen';
+    const rim=ctx.createRadialGradient(px,py,pr*0.80,px,py,pr*1.0);
+    rim.addColorStop(0,'rgba(0,0,0,0)');
+    rim.addColorStop(0.6,'rgba(80,130,255,0.0)');
+    rim.addColorStop(1,'rgba(120,180,255,0.45)');
+    ctx.fillStyle=rim; ctx.beginPath(); ctx.arc(px,py,pr,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    // Especular (reflexo de luz)
+    ctx.save();
+    const spec=ctx.createRadialGradient(px-pr*0.38,py-pr*0.40,0,px-pr*0.38,py-pr*0.40,pr*0.42);
+    spec.addColorStop(0,'rgba(255,255,255,0.30)');
+    spec.addColorStop(0.4,'rgba(200,220,255,0.10)');
+    spec.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.beginPath(); ctx.arc(px,py,pr,0,Math.PI*2); ctx.clip();
+    ctx.fillStyle=spec; ctx.beginPath(); ctx.arc(px-pr*0.38,py-pr*0.40,pr*0.42,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    // Sombra do planeta sobre os anéis (lado direito)
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(px,py,pr*2.35,pr*0.28,0,0,Math.PI*2); ctx.clip();
+    const shad=ctx.createRadialGradient(px,py,pr*0.5,px,py,pr*1.6);
+    shad.addColorStop(0,'rgba(0,0,0,0)');
+    shad.addColorStop(0.65,'rgba(0,0,0,0)');
+    shad.addColorStop(1,'rgba(0,0,8,0.72)');
+    ctx.fillStyle=shad; ctx.fillRect(px,py-pr*0.5,pr*2.5,pr*0.5);
+    ctx.restore();
+
+    // Anéis dianteiros (frente do planeta)
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(px,py,pr*2.35,pr*0.28,0,0,Math.PI); ctx.clip();
+    for (const [ra,rb,lw,col] of ringData) {
+      ctx.strokeStyle=col; ctx.lineWidth=lw;
+      ctx.beginPath(); ctx.ellipse(px,py,ra,rb,0,0,Math.PI*2); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Campo de asteroides
+    const off1=(-camX)*0.12;
+    for (let i=0; i<18; i++) {
+      const ax=((d_s(i*31)*28000+off1)%28000)/28000*W;
+      if (ax<-30||ax>W+30) continue;
+      const ay=H*0.1+d_s(i*31+1)*H*0.65;
+      const ar=4+d_s(i*31+2)*14;
+      const arot=T*(0.4+d_s(i*31+3)*0.8)*(d_s(i*31+4)>0.5?1:-1);
+      ctx.save(); ctx.translate(ax,ay); ctx.rotate(arot);
+      ctx.fillStyle=`hsl(${20+d_s(i*31+5)*20},12%,${18+d_s(i*31+6)*15}%)`;
+      ctx.beginPath();
+      const np=6+Math.floor(d_s(i*31+7)*4);
+      for (let v=0; v<np; v++) {
+        const va=(v/np)*Math.PI*2, vr=ar*(0.7+d_s(i*31+v+8)*0.5);
+        v===0?ctx.moveTo(Math.cos(va)*vr,Math.sin(va)*vr):ctx.lineTo(Math.cos(va)*vr,Math.sin(va)*vr);
+      }
+      ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+
+  }
+
+  // ===============================================================
+  //  FASE 5 — Vulcanico / Infernal
+  // ===============================================================
+  else if (phase === 5) {
+    const sky=ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'#0a0000'); sky.addColorStop(0.4,'#300808'); sky.addColorStop(0.75,'#5a1408'); sky.addColorStop(1,'#7a1c00');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+
+    // Nuvens de fumaca
+    for (let i=0; i<12; i++) {
+      const csx=(d_s(i*29)*W*2.5+T*14*(0.8+d_s(i*29+1)*0.5))%(W*2.5)-W*0.5;
+      if (csx<-200||csx>W+200) continue;
+      const csy=30+d_s(i*29+2)*100, cr=80+d_s(i*29+3)*70;
+      const cg=ctx.createRadialGradient(csx,csy,0,csx,csy,cr);
+      cg.addColorStop(0,`rgba(20,8,4,${0.45+d_s(i*29+4)*0.25})`); cg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(csx,csy,cr,0,Math.PI*2); ctx.fill();
+    }
+
+    // Cadeia de vulcoes distantes
+    const off1=(-camX)*0.018;
+    ctx.fillStyle='#1a0500';
+    for (let i=0; i<5; i++) {
+      const vx=((i*5600+off1+800)%16800)/16800*W;
+      if (vx<-150||vx>W+150) continue;
+      const vh=90+d_s(i*17)*60, vw=120+d_s(i*17+1)*60;
+      ctx.beginPath(); ctx.moveTo(vx-vw,H*0.70); ctx.lineTo(vx,H*0.70-vh); ctx.lineTo(vx+vw,H*0.70); ctx.closePath(); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation='screen';
+      const vcg=ctx.createRadialGradient(vx,H*0.70-vh,0,vx,H*0.70-vh,40);
+      vcg.addColorStop(0,'rgba(255,120,0,0.35)'); vcg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=vcg; ctx.beginPath(); ctx.arc(vx,H*0.70-vh,40,0,Math.PI*2); ctx.fill(); ctx.restore();
+    }
+
+    // Vulcoes medios
+    const off2=(-camX)*0.045;
+    ctx.fillStyle='#120300';
+    for (let i=0; i<3; i++) {
+      const vx=((i*8000+off2+1200)%22400)/22400*W;
+      if (vx<-200||vx>W+200) continue;
+      const vh=150+d_s(i*23)*80, vw=180+d_s(i*23+1)*80;
+      ctx.beginPath(); ctx.moveTo(vx-vw,H*0.80); ctx.lineTo(vx,H*0.80-vh); ctx.lineTo(vx+vw,H*0.80); ctx.closePath(); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation='screen';
+      const vcg2=ctx.createRadialGradient(vx,H*0.80-vh,0,vx,H*0.80-vh,55);
+      vcg2.addColorStop(0,'rgba(255,80,0,0.45)'); vcg2.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=vcg2; ctx.beginPath(); ctx.arc(vx,H*0.80-vh,55,0,Math.PI*2); ctx.fill(); ctx.restore();
+    }
+
+    // Rios de lava
+    const off3=(-camX)*0.10;
+    ctx.save(); ctx.globalCompositeOperation='screen';
+    for (let i=0; i<6; i++) {
+      const lx=((d_s(i*47)*28000+off3)%28000)/28000*W;
+      if (lx<-20||lx>W+20) continue;
+      const la=0.18+0.12*Math.sin(T*2.2+i*1.8);
+      const lg=ctx.createLinearGradient(lx-8,H*0.75,lx+8,H);
+      lg.addColorStop(0,`rgba(255,${100+d_s(i*47+1)*60|0},0,${la})`);
+      lg.addColorStop(1,'rgba(180,40,0,0)');
+      ctx.fillStyle=lg; ctx.fillRect(lx-6,H*0.75,12,H*0.25);
+    }
+    ctx.restore();
+
+    // Colunas de fogo
+    const off4=(-camX)*0.08;
+    ctx.save(); ctx.globalCompositeOperation='screen';
+    for (let i=0; i<5; i++) {
+      const fx=((d_s(i*53)*28000+off4)%28000)/28000*W;
+      if (fx<-30||fx>W+30) continue;
+      const fph=(T*1.5+d_s(i*53+1)*6.28)%(Math.PI*2);
+      const fh=(100+d_s(i*53+2)*80)*(0.7+0.3*Math.sin(fph));
+      const fw=20+d_s(i*53+3)*14;
+      const fg=ctx.createRadialGradient(fx,H-fh*0.5,fw*0.1,fx,H-fh*0.5,fh*0.6);
+      fg.addColorStop(0,'rgba(255,220,60,0.7)'); fg.addColorStop(0.4,'rgba(255,80,0,0.45)'); fg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=fg; ctx.beginPath(); ctx.ellipse(fx,H-fh*0.5,fw,fh*0.6,0,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+
+    // Brasas subindo
+    for (let i=0; i<40; i++) {
+      const eph=(T*0.8+d_s(i*13)*8)%8;
+      const ex=d_s(i*13+1)*W+Math.sin(T*1.8+i)*12;
+      const ey=H-(eph/8)*H*1.1;
+      if (ey<-10||ey>H+10) continue;
+      ctx.save(); ctx.globalAlpha=0.7*(1-eph/8);
+      ctx.fillStyle=`hsl(${20+d_s(i*13+2)*30},100%,${55+d_s(i*13+3)*30}%)`;
+      ctx.beginPath(); ctx.arc(ex,ey,1+d_s(i*13+4)*2.5,0,Math.PI*2); ctx.fill(); ctx.restore();
+    }
+
+    // Brilho de lava no chao
+    ctx.save(); ctx.globalCompositeOperation='screen';
+    const gGlow=ctx.createLinearGradient(0,H*0.72,0,H);
+    gGlow.addColorStop(0,'rgba(0,0,0,0)'); gGlow.addColorStop(1,`rgba(180,40,0,${0.20+0.10*Math.sin(T*1.4)})`);
+    ctx.fillStyle=gGlow; ctx.fillRect(0,H*0.72,W,H*0.28); ctx.restore();
+
+  }
+
+  // -- Vinheta leve nas bordas (todas as fases) --
+  const vign = ctx.createRadialGradient(W/2,H/2,H*0.32,W/2,H/2,H*0.78);
+  vign.addColorStop(0,'rgba(0,0,0,0)'); vign.addColorStop(1,'rgba(0,0,0,0.52)');
+  ctx.fillStyle=vign; ctx.fillRect(0,0,W,H);
+
+  // -- Poeira atmosferica (todas as fases) --
+  const dustCol = [[0,180,200],[0,160,220],[120,60,200],[180,210,255],[230,55,15]][Math.min(phase-1,4)];
+  const [dr,dg,db]=dustCol;
+  for (const d of bgDust) {
+    const sx = d.x - camX*0.7;
+    if (sx<-5||sx>W+5) continue;
+    ctx.save(); ctx.globalAlpha=d.alpha*1.4;
+    ctx.fillStyle=`rgb(${dr},${dg},${db})`;
+    ctx.beginPath(); ctx.arc(sx,d.y,d.size,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+// helper: pseudo-random determinístico para efeitos de fundo
+function d_s(n) {
+  let s = (n*2654435761)>>>0; s ^= s>>>16; s = Math.imul(s,0x45d9f3b)>>>0; s ^= s>>>16;
+  return (s>>>0)/4294967295;
+}
+
+function drawPlatforms() {
+  // Paletas de pedra natural por fase
+  const STONE = [
+    { top:'#152e38', bot:'#061318', rim:'rgba(0,180,155,0.28)', hi:'rgba(0,220,190,0.22)', cr:'rgba(0,0,0,0.28)', moss:['rgba(0,90,65,0.55)','rgba(0,60,45,0.35)'] },
+    { top:'#162a18', bot:'#070f08', rim:'rgba(40,185,65,0.30)', hi:'rgba(55,215,85,0.24)', cr:'rgba(0,0,0,0.30)', moss:['rgba(20,95,18,0.58)','rgba(12,62,10,0.38)'] },
+    { top:'#10091a', bot:'#050309', rim:'rgba(75,45,125,0.25)', hi:'rgba(95,60,155,0.20)', cr:'rgba(0,0,0,0.38)', moss:['rgba(45,20,75,0.55)','rgba(28,12,50,0.35)'] },
+    { top:'#0c1422', bot:'#030710', rim:'rgba(130,185,255,0.32)', hi:'rgba(175,215,255,0.28)', cr:'rgba(0,0,0,0.40)', moss:['rgba(65,105,195,0.48)','rgba(40,70,155,0.32)'] },
+    { top:'#1c0608', bot:'#0a0203', rim:'rgba(220,60,30,0.38)', hi:'rgba(255,90,40,0.30)', cr:'rgba(0,0,0,0.45)', moss:['rgba(180,42,15,0.58)','rgba(120,25,8,0.40)'] }
+  ];
+
+  for (const p of platforms) {
+    const sx = p.x - camX;
+    if (sx > W+60 || sx+p.w < -60) continue;
+    const pp = p.x < 5000 ? 1 : p.x < 10000 ? 2 : p.x < 15000 ? 3 : p.x < 23000 ? 4 : 5;
+    const S = STONE[pp-1];
+
+    ctx.save();
+
+    // ── Corpo de pedra com gradiente ──────────────────────────
+    const g = ctx.createLinearGradient(sx, p.y, sx, p.y + p.h);
+    g.addColorStop(0, S.top);
+    g.addColorStop(0.35, S.top);
+    g.addColorStop(1, S.bot);
+    ctx.fillStyle = g;
+    ctx.fillRect(sx, p.y, p.w, p.h);
+
+    // ── Brilho no topo (luz vinda de cima) ────────────────────
+    const hi = ctx.createLinearGradient(sx, p.y, sx, p.y + 5);
+    hi.addColorStop(0, S.hi);
+    hi.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = hi;
+    ctx.fillRect(sx, p.y, p.w, 5);
+
+    // ── Borda colorida sutil ──────────────────────────────────
+    ctx.strokeStyle = S.rim;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(sx + 0.5, p.y + 0.5, p.w - 1, p.h - 1);
+
+    // ── Rachaduras deterministas (sem Math.random — baseado em p.x) ──
+    let seed = (p.x * 7 + 13) | 0;
+    const rng = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967295; };
+    ctx.strokeStyle = S.cr;
+    ctx.lineWidth = 0.6;
+    const nCracks = Math.floor(p.w / 32);
+    for (let i = 0; i < nCracks; i++) {
+      const cx2 = sx + 8 + rng() * (p.w - 16);
+      const t = p.y + rng() * (p.h * 0.35);
+      const b = t + 4 + rng() * (p.h * 0.5);
+      const mx = cx2 + (rng() - 0.5) * 5;
+      ctx.beginPath();
+      ctx.moveTo(cx2 + (rng()-0.5)*3, t);
+      ctx.quadraticCurveTo(mx, (t+b)*0.5, cx2 + (rng()-0.5)*3, b);
+      ctx.stroke();
+    }
+
+    // ── Superfície musgosa no topo das plataformas flutuantes ──
+    if (p.type === 'plat') {
+      ctx.fillStyle = S.moss[0];
+      ctx.fillRect(sx, p.y, p.w, 3);
+      ctx.fillStyle = S.moss[1];
+      ctx.fillRect(sx + 3, p.y + 1, p.w - 6, 1);
+      // Pequenas saliências orgânicas na borda superior
+      ctx.fillStyle = S.moss[0];
+      for (let ix = 4; ix < p.w - 4; ix += Math.floor(9 + rng() * 8)) {
+        const bh = 1 + Math.floor(rng() * 3);
+        ctx.fillRect(sx + ix, p.y - bh, 3 + Math.floor(rng()*3), bh);
+      }
+    }
+
+    // ── Halo pulsante para plataformas móveis (Fase 5) ──────────
+    if (p.mvx !== undefined) {
+      const mgr = ctx.createRadialGradient(sx+p.w/2, p.y+p.h/2, 0, sx+p.w/2, p.y+p.h/2, p.w*0.9+12);
+      const gA = 0.18 + Math.sin(tick * 0.14 + (p._bx||p.x) * 0.01) * 0.09;
+      mgr.addColorStop(0, `rgba(255,85,20,${gA*2.2})`);
+      mgr.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.save(); ctx.globalCompositeOperation = 'screen';
+      ctx.fillStyle = mgr;
+      ctx.fillRect(sx - 10, p.y - 10, p.w + 20, p.h + 20);
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+}
+
+function drawPlayer() {
+  const px = player.x - camX;
+  const py = player.y;
+  const f  = player.facing;
+  player.wingFrame = (player.wingFrame || 0) + 1;
+  const gInt = 0.7 + Math.sin(player.flickerPhase * 0.9) * 0.3;
+
+  // 0 = frente, 1 = correndo — capa voa para trás
+  const isMoving = keys['ArrowLeft'] || keys['ArrowRight'] || keys['KeyA'] || keys['KeyD'];
+  const targetTurn = isMoving ? 1.0 : 0.0;
+  if (player.turnProgress === undefined) player.turnProgress = 0.0;
+  player.turnProgress += (targetTurn - player.turnProgress) * 0.10;
+  const tp = player.turnProgress;
+  const L = (a, b) => a * (1 - tp) + b * tp;
+
+  // Flutter da capa
+  const Tf = player.wingFrame * 0.06;
+  const flt = Math.sin(Tf * 2.2) * 3.5 + Math.sin(Tf * 3.5 + 0.8) * 2;
+
+  // Animação de pernas correndo
+  const legT = player.wingFrame * 0.22;
+  const legA = Math.sin(legT) * tp * 14;
+  const legB = Math.sin(legT + Math.PI) * tp * 14;
+
+  const ph = getPhase();
+
+  // Cores da capa por fase
+  const palettes = [
+    ['#060e38','#0e1c6c','#1830a8','rgba(50,90,240,0.55)'],   // ph1 azul noite
+    ['#1c0c04','#581e06','#962e0e','rgba(190,70,15,0.55)'],   // ph2 brasa escura
+    ['#040e06','#0a2c0e','#124e18','rgba(20,130,40,0.55)'],   // ph3 floresta escura
+    ['#060920','#0c1244','#142278','rgba(35,65,190,0.55)'],   // ph4 void azul
+    ['#160504','#3a0e0e','#680e0e','rgba(170,25,18,0.55)'],   // ph5 sangue
+  ];
+  const [cDk, cMd, cBrt, cRim] = palettes[Math.min(ph-1,4)];
+
+  ctx.save();
+  ctx.translate(px + player.w/2, py + player.h);
+  ctx.scale(f, 1);
+
+  // === PERNAS (aparecem abaixo da capa) ===
+  ctx.strokeStyle = '#0c0c0c'; ctx.lineWidth = 2.8; ctx.lineCap = 'round';
+  for (const [ox, la] of [[L(2,3), legA], [L(-2,0), -legA]]) {
+    const kx = ox + la, ky = L(-6,-8) - Math.abs(la)*0.2;
+    const fx = ox + la * 0.55, fy = L(-2,-1) - Math.abs(la)*0.1;
+    ctx.beginPath(); ctx.moveTo(ox, -13); ctx.lineTo(kx, ky); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+  }
+
+  // === CAPA ===
+  // 5 pontos-âncora lerped: frente (simétrica) → perfil (capa voa para trás)
+  // x positivo = para frente (direção de movimento), x negativo = para trás
+  const Ax = L(-9, -20+flt*0.8),  Ay = L(-42, -44+flt*0.4); // topo-trás do capuz
+  const Bx = L( 9,  5),           By = L(-42, -40);           // topo-frente do capuz
+  const Cx = L(18+flt*0.2, 7),    Cy = L(-7,   2);            // borda frontal baixo
+  const Dx = L( 0,  2),           Dy = L( 4,   4);            // centro baixo
+  const Ex = L(-18-flt*0.2, -30+flt*1.2), Ey = L(-7, -10+flt*1.4); // borda traseira baixo
+
+  const cg = ctx.createLinearGradient(0,-44, 0,5);
+  cg.addColorStop(0, cBrt); cg.addColorStop(0.35, cMd); cg.addColorStop(1, cDk);
+  ctx.fillStyle = cg;
+  ctx.strokeStyle = cRim;
+  ctx.lineWidth = 0.9;
+
+  ctx.beginPath();
+  ctx.moveTo(Ax, Ay);
+  // Arco do capuz (A→B)
+  ctx.bezierCurveTo(
+    L(-3,-12+flt*0.4), L(-47,-48+flt*0.3),
+    L( 3,  6),         L(-47,-46),
+    Bx, By);
+  // Borda frontal descendo (B→C)
+  ctx.bezierCurveTo(
+    L(18+flt*0.15, 7), L(-30,-27),
+    L(18+flt*0.15, 7), L(-14,-11),
+    Cx, Cy);
+  // Borda baixo (C→D→E)
+  ctx.bezierCurveTo(L(14,5), L(3,4), L(6,3+flt*0.3), L(4,4), Dx, Dy);
+  ctx.bezierCurveTo(L(-6,-1+flt*0.3), L(4,4), L(-14,-4+flt*0.5), L(3,2), Ex, Ey);
+  // Borda traseira subindo (E→A)
+  ctx.bezierCurveTo(
+    L(-18-flt*0.15,-18+flt), L(-14+flt,-8+flt*1.2),
+    L(-13,-40+flt*0.5),      L(-22,-44+flt*0.6),
+    Ax, Ay);
+  ctx.fill();
+  ctx.stroke();
+
+  // Destaque brilhante no topo do capuz
+  ctx.save();
+  ctx.strokeStyle = cBrt; ctx.globalAlpha = 0.45; ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(Ax, Ay);
+  ctx.bezierCurveTo(
+    L(-3,-12+flt*0.4), L(-47,-48+flt*0.3),
+    L( 3,  6),         L(-47,-46),
+    Bx, By);
+  ctx.stroke();
+  ctx.restore();
+
+  // === CORPO (pequeno núcleo escuro) ===
+  ctx.fillStyle = '#080808';
+  ctx.beginPath(); ctx.ellipse(L(1,3), -23, L(3.5,2.5), 7, 0, 0, Math.PI*2); ctx.fill();
+
+  // === OLHOS AMARELOS ===
+  const ex1 = L(3, 5),  ey1 = -35; // olho da frente
+  const ex2 = L(-3, 1), ey2 = -35; // olho de trás (some)
+
+  // Halo dos olhos
+  ctx.save(); ctx.globalCompositeOperation = 'screen';
+  const eg = ctx.createRadialGradient(ex1, ey1, 0, ex1, ey1, 12);
+  eg.addColorStop(0, `rgba(255,235,10,${gInt*0.75})`);
+  eg.addColorStop(0.5, `rgba(255,140,0,${gInt*0.28})`);
+  eg.addColorStop(1, 'rgba(200,60,0,0)');
+  ctx.fillStyle = eg;
+  ctx.beginPath(); ctx.arc(ex1, ey1, 12, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // Íris
+  ctx.fillStyle = `rgba(255,222,18,${gInt})`;
+  ctx.beginPath(); ctx.ellipse(ex1, ey1, 3.6, 2.8, 0, 0, Math.PI*2); ctx.fill();
+  ctx.save(); ctx.globalAlpha = L(1, 0.05);
+  ctx.beginPath(); ctx.ellipse(ex2, ey2, 3.6, 2.8, 0, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+  // Pupila
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(ex1, ey1, 1.4, 0, Math.PI*2); ctx.fill();
+  ctx.save(); ctx.globalAlpha = L(1, 0.05);
+  ctx.beginPath(); ctx.arc(ex2, ey2, 1.4, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // Brilho ambiente dos olhos
+  ctx.save(); ctx.globalCompositeOperation = 'screen';
+  const ag = ctx.createRadialGradient(ex1, ey1, 0, ex1, ey1, 20);
+  ag.addColorStop(0, `rgba(255,220,10,${gInt*0.38})`);
+  ag.addColorStop(1, 'rgba(200,80,0,0)');
+  ctx.fillStyle = ag;
+  ctx.beginPath(); ctx.arc(ex1, ey1, 20, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+}
+
+function drawLandingEffects() {
+  const neon = [
+    [0,  240, 210],  // ph1 ciano
+    [255,130,  0],   // ph2 laranja
+    [60, 255,  60],  // ph3 verde
+    [80, 160, 255],  // ph4 azul
+    [255, 50,  30],  // ph5 vermelho
+  ];
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  for (let i = landingEffects.length - 1; i >= 0; i--) {
+    const e = landingEffects[i];
+    e.t += 0.032;
+    if (e.t >= 1) { landingEffects.splice(i, 1); continue; }
+    const [r,g,b] = neon[Math.min(e.ph-1, 4)];
+
+    // Coords da plataforma em tela
+    const spx = e.px - camX;       // borda esquerda
+    const spy = e.py;               // topo da plataforma
+    const spw = e.pw;               // largura
+    const scx = e.cx - camX;       // ponto de pouso (centro)
+
+    // Spread: expande do ponto de pouso para as bordas, rápido
+    const spreadT = Math.min(e.t * 3, 1);
+    const halfSpread = spreadT * (spw / 2 + 8);
+    const alpha = Math.pow(1 - e.t, 1.3);
+
+    // Clip estrito ao rect da plataforma — nada escapa para fora
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(spx, spy, spw, e.ht);
+    ctx.clip();
+
+    const left  = Math.max(spx,       scx - halfSpread);
+    const right = Math.min(spx + spw, scx + halfSpread);
+    const width = right - left;
+    if (width > 0) {
+      // 1) Linha neon no topo (borda superior da plataforma)
+      const lg = ctx.createLinearGradient(left, spy, right, spy);
+      lg.addColorStop(0,    `rgba(${r},${g},${b},0)`);
+      lg.addColorStop(0.15, `rgba(${r},${g},${b},${alpha})`);
+      lg.addColorStop(0.5,  `rgba(${r},${g},${b},${alpha})`);
+      lg.addColorStop(0.85, `rgba(${r},${g},${b},${alpha})`);
+      lg.addColorStop(1,    `rgba(${r},${g},${b},0)`);
+      ctx.fillStyle = lg;
+      ctx.fillRect(left, spy, width, 2);
+
+      // 2) Glow que preenche o interior da plataforma (de cima para baixo)
+      const bg = ctx.createLinearGradient(scx, spy, scx, spy + e.ht);
+      bg.addColorStop(0, `rgba(${r},${g},${b},${alpha * 0.45})`);
+      bg.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      ctx.fillStyle = bg;
+      ctx.fillRect(left, spy, width, e.ht);
+
+      // 3) Flash radial inicial no centro do impacto
+      if (e.t < 0.35) {
+        const fi = (1 - e.t / 0.35) * 0.55;
+        const fg = ctx.createRadialGradient(scx, spy, 0, scx, spy + e.ht * 0.5, e.ht * 1.2);
+        fg.addColorStop(0, `rgba(${r},${g},${b},${fi})`);
+        fg.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = fg;
+        ctx.fillRect(spx, spy, spw, e.ht);
+      }
+    }
+    ctx.restore(); // remove clip
+  }
+  ctx.restore();
+}
+
+function drawLight() {
+  const phase = getPhase() >= 3 ? getPhase() : 1; // Fase 3+ tem luz própria, 1+2 = ciano
+  const T = tick * 0.018;
+  player.flickerPhase += 0.13 + Math.random()*0.06;
+  const fl = 1 + Math.sin(player.flickerPhase)*0.08 + Math.random()*0.03;
+  const cx = player.x - camX + player.w/2;
+  const cy = player.y + player.h - 32; // olhos do fantasma
+
+  ctx.save(); ctx.globalCompositeOperation='screen';
+
+  if (phase === 1) {
+    // Luz do vagalume ciano — ilumina tudo ao redor
+    const R = 260 * fl;
+    const pg = ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+    pg.addColorStop(0,'rgba(160,255,240,0.55)');
+    pg.addColorStop(0.3,'rgba(0,220,200,0.28)');
+    pg.addColorStop(0.65,'rgba(0,160,180,0.10)');
+    pg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=pg; ctx.fillRect(0,0,W,H);
+    // Anel de luz pulsante
+    const ring = 0.06 + Math.sin(T*2.8)*0.03;
+    const rg = ctx.createRadialGradient(cx,cy,R*0.7,cx,cy,R*0.85);
+    rg.addColorStop(0,'rgba(0,0,0,0)');
+    rg.addColorStop(0.5,`rgba(0,200,180,${ring})`);
+    rg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=rg; ctx.fillRect(0,0,W,H);
+
+  } else if (phase === 2) {
+    // Luz laranja quente — ilumina a caverna vulcânica
+    const R = 280 * fl;
+    const pg = ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+    pg.addColorStop(0,'rgba(255,200,80,0.52)');
+    pg.addColorStop(0.3,'rgba(220,100,20,0.30)');
+    pg.addColorStop(0.65,'rgba(160,50,5,0.12)');
+    pg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=pg; ctx.fillRect(0,0,W,H);
+    // Pulsação de calor
+    const heatPulse = 0.08 + Math.sin(T*2.1)*0.04;
+    const hg = ctx.createRadialGradient(cx,cy,R*0.6,cx,cy,R*0.9);
+    hg.addColorStop(0,'rgba(0,0,0,0)');
+    hg.addColorStop(0.5,`rgba(255,80,0,${heatPulse})`);
+    hg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=hg; ctx.fillRect(0,0,W,H);
+
+  } else if (phase === 3) {
+    // Luz verde-amarelada do vagalume + halo elétrico roxo
+    const R = 240 * fl;
+    const pg = ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+    pg.addColorStop(0,'rgba(200,255,80,0.50)');
+    pg.addColorStop(0.25,'rgba(100,220,20,0.28)');
+    pg.addColorStop(0.6,'rgba(50,180,0,0.10)');
+    pg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=pg; ctx.fillRect(0,0,W,H);
+    const elec = 0.10 + Math.sin(T*3.5)*0.06;
+    const eg = ctx.createRadialGradient(cx,cy,R*0.55,cx,cy,R*0.85);
+    eg.addColorStop(0,'rgba(0,0,0,0)');
+    eg.addColorStop(0.5,`rgba(180,80,255,${elec})`);
+    eg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=eg; ctx.fillRect(0,0,W,H);
+
+  } else if (phase === 4) {
+    // Fase 4 — Luz gelo/branca estelar + anel azul-branco frio
+    const R = 255 * fl;
+    const pg = ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+    pg.addColorStop(0,'rgba(220,240,255,0.54)');
+    pg.addColorStop(0.28,'rgba(140,185,255,0.28)');
+    pg.addColorStop(0.62,'rgba(70,110,230,0.10)');
+    pg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=pg; ctx.fillRect(0,0,W,H);
+    const icePulse = 0.07 + Math.sin(T*3.1)*0.038;
+    const ig = ctx.createRadialGradient(cx,cy,R*0.60,cx,cy,R*0.87);
+    ig.addColorStop(0,'rgba(0,0,0,0)');
+    ig.addColorStop(0.5,`rgba(160,205,255,${icePulse})`);
+    ig.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=ig; ctx.fillRect(0,0,W,H);
+
+  } else {
+    // Fase 5 — Luz âmbar-carmesim, quente e opressiva
+    const R = 270 * fl;
+    const pg = ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+    pg.addColorStop(0,'rgba(255,162,42,0.57)');
+    pg.addColorStop(0.28,'rgba(220,70,15,0.30)');
+    pg.addColorStop(0.62,'rgba(150,25,5,0.12)');
+    pg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=pg; ctx.fillRect(0,0,W,H);
+    const firePulse = 0.10 + Math.sin(T*4.2)*0.065;
+    const fg = ctx.createRadialGradient(cx,cy,R*0.50,cx,cy,R*0.82);
+    fg.addColorStop(0,'rgba(0,0,0,0)');
+    fg.addColorStop(0.5,`rgba(255,100,0,${firePulse})`);
+    fg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=fg; ctx.fillRect(0,0,W,H);
+  }
+
+  ctx.restore();
+}
+
+function drawHUD() {
+  if (flashAlpha > 0) {
+    ctx.save(); ctx.globalAlpha = flashAlpha; ctx.fillStyle = '#6b0000'; ctx.fillRect(0,0,W,H); ctx.restore();
+    flashAlpha = Math.max(0, flashAlpha - 0.04);
+  }
+
+  const phase = getPhase();
+  const pct = player.x / WORLD_W;
+
+  // ── Contador de pulos (canto superior direito) ──────────────
+  ctx.save();
+  ctx.textAlign = 'right';
+  const jumpCol = ['#00e8c8','#ffb030','#b060ff','#88aaff','#ff7020'][phase-1];
+  ctx.font = 'bold 13px Georgia';
+  ctx.fillStyle = jumpCol;
+  ctx.globalAlpha = 0.85;
+  ctx.fillText(`${jumpCount} pulos`, W - 14, 22);
+  ctx.textAlign = 'left';
+  ctx.restore();
+
+  // ── Barra de progresso (fina, topo) ─────────────────────────
+  ctx.save();
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, W, 4);
+  ctx.globalAlpha = 0.7;
+  ctx.fillStyle = jumpCol;
+  ctx.fillRect(0, 0, W * Math.min(pct, 1), 4);
+  ctx.restore();
+
+  // ── Tela de fim ─────────────────────────────────────────────
+  if (pct >= 0.99) {
+    if (!gameFinished) {
+      gameFinished = true;
+      const best = parseInt(localStorage.getItem('vgBest') || '999999');
+      if (jumpCount < best) localStorage.setItem('vgBest', jumpCount);
+      stopAmbient();
+      sfxFinish();
+    }
+    const best = parseInt(localStorage.getItem('vgBest') || jumpCount);
+    const rating =
+      jumpCount <= 500  ? ['LENDÁRIO',  '#ffe040'] :
+      jumpCount <= 800  ? ['MESTRE',    '#00e8c8'] :
+      jumpCount <= 1200 ? ['HABILIDOSO','#88aaff'] :
+      jumpCount <= 2000 ? ['APRENDIZ',  '#ffb030'] :
+                          ['SOBREVIVENTE','#cc4444'];
+    const stars =
+      jumpCount <= 500  ? '★★★★★' :
+      jumpCount <= 800  ? '★★★★☆' :
+      jumpCount <= 1200 ? '★★★☆☆' :
+      jumpCount <= 2000 ? '★★☆☆☆' : '★☆☆☆☆';
+
+    const T2 = tick * 0.018;
+    ctx.save();
+    // Fundo escuro semi-transparente
+    ctx.fillStyle = 'rgba(0,5,12,0.78)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+
+    // Título
+    ctx.fillStyle = 'rgba(0,235,205,0.95)';
+    ctx.font = 'bold 30px Georgia';
+    ctx.letterSpacing = '7px';
+    ctx.fillText('✦ FIM DA JORNADA ✦', W/2, H/2 - 88);
+
+    // Linha decorativa
+    ctx.strokeStyle = 'rgba(0,180,160,0.30)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(W/2-200, H/2-66); ctx.lineTo(W/2+200, H/2-66); ctx.stroke();
+
+    // Número de pulos — grande e central
+    const pulse = 0.90 + Math.sin(T2*1.8)*0.10;
+    ctx.globalAlpha = pulse;
+    ctx.font = 'bold 62px Georgia';
+    ctx.letterSpacing = '2px';
+    ctx.fillStyle = rating[1];
+    ctx.fillText(jumpCount, W/2, H/2 + 10);
+    ctx.globalAlpha = 1;
+    ctx.font = '12px Georgia';
+    ctx.letterSpacing = '4px';
+    ctx.fillStyle = 'rgba(180,220,210,0.60)';
+    ctx.fillText('PULOS TOTAIS', W/2, H/2 + 30);
+
+    // Estrelas
+    ctx.font = 'bold 22px Georgia';
+    ctx.letterSpacing = '6px';
+    ctx.fillStyle = rating[1];
+    ctx.fillText(stars, W/2, H/2 + 62);
+
+    // Rating
+    ctx.font = 'bold 16px Georgia';
+    ctx.letterSpacing = '5px';
+    ctx.fillStyle = rating[1];
+    ctx.fillText(rating[0], W/2, H/2 + 88);
+
+    // Melhor pontuação
+    if (best < jumpCount) {
+      ctx.font = '11px Georgia';
+      ctx.letterSpacing = '2px';
+      ctx.fillStyle = 'rgba(0,235,205,0.70)';
+      ctx.fillText(`melhor: ${best} pulos`, W/2, H/2 + 112);
+    } else {
+      ctx.font = '11px Georgia';
+      ctx.letterSpacing = '2px';
+      ctx.fillStyle = 'rgba(255,220,60,0.80)';
+      ctx.fillText('novo recorde!', W/2, H/2 + 112);
+    }
+
+    // Reiniciar
+    const blinkA = 0.50 + Math.sin(T2*2.2)*0.30;
+    ctx.globalAlpha = blinkA;
+    ctx.font = '11px Georgia';
+    ctx.letterSpacing = '3px';
+    ctx.fillStyle = 'rgba(0,200,180,0.85)';
+    ctx.fillText('✦ clique ou pressione qualquer tecla para jogar novamente ✦', W/2, H/2 + 142);
+
+    ctx.textAlign = 'left';
+    ctx.restore();
+    return;
+  }
+
+  // ── Notificação de fase ──────────────────────────────────────
+  if (phaseNotifAlpha > 0) {
+    ctx.save();
+    const na = Math.min(1, phaseNotifAlpha);
+    ctx.globalAlpha = na * na;
+    ctx.fillStyle = 'rgba(0,230,200,0.95)';
+    ctx.font = 'bold 38px Georgia'; ctx.textAlign = 'center'; ctx.letterSpacing = '6px';
+    ctx.fillText(`✦ FASE ${phase} ✦`, W/2, H/2 - 10);
+    ctx.textAlign = 'left';
+    phaseNotifAlpha -= 0.014;
+    ctx.restore();
+  }
+}
+
+// ── ÁUDIO ─────────────────────────────────────────────────────
+let AC = null, masterVol;
+let ambTimer = null, ambPhaseId = 0;
+
+function initAudio() {
+  if (AC) { AC.resume(); return; }
+  AC = new (window.AudioContext || window.webkitAudioContext)();
+  masterVol = AC.createGain(); masterVol.gain.value = 0.5; masterVol.connect(AC.destination);
+  startAmbient(getPhase());
+}
+function sfxJump() {
+  if (!AC) return;
+  const ph = getPhase();
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(masterVol);
+  o.type = (['square','triangle','sine','sine','sawtooth'])[Math.min(ph-1,4)];
+  const [f1,f2] = ([[160,640],[150,460],[130,370],[110,290],[95,240]])[Math.min(ph-1,4)];
+  o.frequency.setValueAtTime(f1, AC.currentTime);
+  o.frequency.exponentialRampToValueAtTime(f2, AC.currentTime + 0.08);
+  g.gain.setValueAtTime(0.11, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + 0.13);
+  o.start(); o.stop(AC.currentTime + 0.14);
+}
+
+function sfxFinish() {
+  if (!AC) return;
+  // Acorde final ascendente — vitória épica
+  const notes = [[261,'sine'],[329,'sine'],[392,'triangle'],[523,'sine'],[784,'sine'],[1046,'sine']];
+  notes.forEach(([f,tp], i) => {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.connect(g); g.connect(masterVol);
+    o.type = tp; o.frequency.value = f;
+    const t = AC.currentTime + i * 0.12;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.10, t + 0.08);
+    g.gain.linearRampToValueAtTime(0.10, t + 0.45);
+    g.gain.linearRampToValueAtTime(0, t + 1.1);
+    o.start(t); o.stop(t + 1.2);
+  });
+}
+
+function sfxDeath() {
+  if (!AC) return;
+  [0, 0.07, 0.14].forEach((d, i) => {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.connect(g); g.connect(masterVol);
+    o.type = 'sawtooth';
+    const t = AC.currentTime + d;
+    o.frequency.setValueAtTime(380 - i*60, t);
+    o.frequency.exponentialRampToValueAtTime(35, t + 0.5);
+    g.gain.setValueAtTime(0.13, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.start(t); o.stop(t + 0.52);
+  });
+}
+
+function sfxPhaseChange(ph) {
+  if (!AC) return;
+  const chords = {
+    2: [[392,'triangle'],[494,'triangle'],[587,'triangle'],[784,'triangle']],
+    3: [[130,'square'],[155,'square'],[196,'square'],[233,'square'],[277,'sine']],
+    4: [[65,'sine'],[98,'sine'],[131,'sine'],[196,'triangle'],[261,'sine'],[392,'sine']],
+    5: [[41,'sine'],[55,'sawtooth'],[82,'sine'],[110,'sawtooth'],[138,'sine'],[165,'sawtooth'],[220,'sine']]
+  };
+  (chords[ph]||[]).forEach(([f,tp],i) => {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.connect(g); g.connect(masterVol);
+    o.type = tp; o.frequency.value = f;
+    const t = AC.currentTime + i * 0.09;
+    g.gain.setValueAtTime(0.14, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.start(t); o.stop(t + 0.52);
+  });
+}
+
+function stopAmbient() { clearTimeout(ambTimer); ambTimer = null; ambPhaseId++; }
+
+function startAmbient(ph) {
+  stopAmbient();
+  const id = ambPhaseId;
+  if (!AC) return;
+  if (ph === 1) { ambPhase1.i = 0; ambPhase1(id); }
+  else if (ph === 2) { ambPhase2.i = 0; ambPhase2.dt = 0; ambPhase2(id); }
+  else if (ph === 3) { ambPhase3.i = 0; ambPhase3(id); }
+  else if (ph === 4) { ambPhase4.i = 0; ambPhase4(id); }
+  else { ambPhase5.i = 0; ambPhase5(id); }
+}
+
+// Fase 1: notas suaves pentatônicas — caverna bioluminescente calma
+function ambPhase1(id) {
+  if (!AC || ambPhaseId !== id) return;
+  // Pentatônica de Dó maior: C4 E4 G4 A4 C5 A4 G4 E4
+  const scale = [261.6, 329.6, 392, 440, 523.3, 440, 392, 329.6];
+  const freq = scale[(ambPhase1.i||0) % scale.length];
+  // Nota principal — sine suave com fade in/out
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(masterVol);
+  o.type = 'sine'; o.frequency.value = freq;
+  const dur = 1.6;
+  g.gain.setValueAtTime(0, AC.currentTime);
+  g.gain.linearRampToValueAtTime(0.038, AC.currentTime + 0.35);
+  g.gain.linearRampToValueAtTime(0.038, AC.currentTime + dur - 0.5);
+  g.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+  o.start(); o.stop(AC.currentTime + dur + 0.1);
+  // Sub-oitava suave para corpo
+  const o2 = AC.createOscillator(), g2 = AC.createGain();
+  o2.connect(g2); g2.connect(masterVol);
+  o2.type = 'sine'; o2.frequency.value = freq * 0.5;
+  g2.gain.setValueAtTime(0, AC.currentTime);
+  g2.gain.linearRampToValueAtTime(0.016, AC.currentTime + 0.5);
+  g2.gain.linearRampToValueAtTime(0, AC.currentTime + dur * 0.75);
+  o2.start(); o2.stop(AC.currentTime + dur);
+  ambPhase1.i = (ambPhase1.i||0) + 1;
+  ambTimer = setTimeout(() => ambPhase1(id), 1200 + Math.random() * 2800);
+}
+
+// Fase 2: melodia mais misteriosa — pentatônica menor, pausas longas
+function ambPhase2(id) {
+  if (!AC || ambPhaseId !== id) return;
+  // Pentatônica de Lá menor: A3 C4 D4 E4 G4 E4 D4 C4
+  const scale = [220, 261.6, 293.7, 329.6, 392, 329.6, 293.7, 261.6];
+  const freq = scale[(ambPhase2.i||0) % scale.length];
+  // A cada 5 notas toca um drone grave longo
+  if ((ambPhase2.i||0) % 5 === 0) {
+    const od = AC.createOscillator(), gd = AC.createGain();
+    od.connect(gd); gd.connect(masterVol);
+    od.type = 'sine'; od.frequency.value = 110;
+    gd.gain.setValueAtTime(0, AC.currentTime);
+    gd.gain.linearRampToValueAtTime(0.022, AC.currentTime + 0.8);
+    gd.gain.linearRampToValueAtTime(0.022, AC.currentTime + 2.8);
+    gd.gain.linearRampToValueAtTime(0, AC.currentTime + 3.8);
+    od.start(); od.stop(AC.currentTime + 3.9);
+  }
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(masterVol);
+  o.type = 'sine'; o.frequency.value = freq;
+  const dur = 1.8;
+  g.gain.setValueAtTime(0, AC.currentTime);
+  g.gain.linearRampToValueAtTime(0.042, AC.currentTime + 0.4);
+  g.gain.linearRampToValueAtTime(0.042, AC.currentTime + dur - 0.6);
+  g.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+  o.start(); o.stop(AC.currentTime + dur + 0.1);
+  ambPhase2.i = (ambPhase2.i||0) + 1;
+  ambTimer = setTimeout(() => ambPhase2(id), 1500 + Math.random() * 3000);
+}
+
+// Fase 3 — Escala cromática/diminuta, caverna de cristal sombria
+function ambPhase3(id) {
+  if (!AC || ambPhaseId !== id) return;
+  // Escala diminuta sombria em registro médio-grave
+  const scale = [130.8, 155.6, 174.6, 207.7, 155.6, 130.8, 146.8, 196.0];
+  const freq = scale[(ambPhase3.i||0) % scale.length];
+  // Nota principal — triangle, mais escura
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(masterVol);
+  o.type = 'triangle'; o.frequency.value = freq;
+  const dur = 2.2;
+  g.gain.setValueAtTime(0, AC.currentTime);
+  g.gain.linearRampToValueAtTime(0.034, AC.currentTime + 0.45);
+  g.gain.linearRampToValueAtTime(0.034, AC.currentTime + dur - 0.65);
+  g.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+  o.start(); o.stop(AC.currentTime + dur + 0.1);
+  // Sub-oitava para profundidade
+  const o2 = AC.createOscillator(), g2 = AC.createGain();
+  o2.connect(g2); g2.connect(masterVol);
+  o2.type = 'sine'; o2.frequency.value = freq * 0.5;
+  g2.gain.setValueAtTime(0, AC.currentTime);
+  g2.gain.linearRampToValueAtTime(0.018, AC.currentTime + 0.7);
+  g2.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+  o2.start(); o2.stop(AC.currentTime + dur);
+  // Faísca elétrica a cada 3 notas
+  if ((ambPhase3.i||0) % 3 === 0) {
+    const te = AC.currentTime + 0.05 + Math.random()*0.12;
+    const oe = AC.createOscillator(), ge = AC.createGain();
+    oe.connect(ge); ge.connect(masterVol);
+    oe.type = 'square'; oe.frequency.value = 600 + Math.random()*600;
+    ge.gain.setValueAtTime(0.055, te);
+    ge.gain.exponentialRampToValueAtTime(0.0001, te + 0.10);
+    oe.start(te); oe.stop(te + 0.11);
+  }
+  // Drone grave contínuo a cada 6 notas
+  if ((ambPhase3.i||0) % 6 === 0) {
+    const od = AC.createOscillator(), gd = AC.createGain();
+    od.connect(gd); gd.connect(masterVol);
+    od.type = 'sine'; od.frequency.value = 65.4;
+    gd.gain.setValueAtTime(0, AC.currentTime);
+    gd.gain.linearRampToValueAtTime(0.022, AC.currentTime + 1.0);
+    gd.gain.linearRampToValueAtTime(0.022, AC.currentTime + 3.2);
+    gd.gain.linearRampToValueAtTime(0, AC.currentTime + 4.2);
+    od.start(); od.stop(AC.currentTime + 4.3);
+  }
+  ambPhase3.i = (ambPhase3.i||0) + 1;
+  ambTimer = setTimeout(() => ambPhase3(id), 1800 + Math.random() * 2200);
+}
+
+// Fase 4 — Escala pentatônica muito grave, sparse, flotando no espaço
+function ambPhase4(id) {
+  if (!AC || ambPhaseId !== id) return;
+  // Pentatônica aberta em registro muito grave — floating in void
+  const scale = [65.4, 98.0, 130.8, 146.8, 196.0, 130.8, 98.0, 65.4];
+  const freq = scale[(ambPhase4.i||0) % scale.length];
+  // Nota principal — sine, ataque muito lento
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(masterVol);
+  o.type = 'sine'; o.frequency.value = freq;
+  const dur = 3.8;
+  g.gain.setValueAtTime(0, AC.currentTime);
+  g.gain.linearRampToValueAtTime(0.026, AC.currentTime + 1.4);
+  g.gain.linearRampToValueAtTime(0.026, AC.currentTime + dur - 1.2);
+  g.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+  o.start(); o.stop(AC.currentTime + dur + 0.1);
+  // Harmônico de quinta (freq*1.5) — sensação de vastidão
+  const o2 = AC.createOscillator(), g2 = AC.createGain();
+  o2.connect(g2); g2.connect(masterVol);
+  o2.type = 'sine'; o2.frequency.value = freq * 1.498;
+  g2.gain.setValueAtTime(0, AC.currentTime);
+  g2.gain.linearRampToValueAtTime(0.010, AC.currentTime + 1.8);
+  g2.gain.linearRampToValueAtTime(0, AC.currentTime + dur * 0.7);
+  o2.start(); o2.stop(AC.currentTime + dur);
+  // Pulso cósmico a cada 4 notas — baixo profundo longo
+  if ((ambPhase4.i||0) % 4 === 0) {
+    const op = AC.createOscillator(), gp = AC.createGain();
+    op.connect(gp); gp.connect(masterVol);
+    op.type = 'sine'; op.frequency.value = 32.7;
+    gp.gain.setValueAtTime(0, AC.currentTime);
+    gp.gain.linearRampToValueAtTime(0.030, AC.currentTime + 1.5);
+    gp.gain.linearRampToValueAtTime(0.030, AC.currentTime + 4.5);
+    gp.gain.linearRampToValueAtTime(0, AC.currentTime + 6.0);
+    op.start(); op.stop(AC.currentTime + 6.1);
+  }
+  ambPhase4.i = (ambPhase4.i||0) + 1;
+  ambTimer = setTimeout(() => ambPhase4(id), 3200 + Math.random() * 3800);
+}
+
+// Fase 5 — Escala frígia agressiva, ritmo rápido, sawtooth tenso
+function ambPhase5(id) {
+  if (!AC || ambPhaseId !== id) return;
+  // Escala frígia em A (tensão máxima)
+  const scale = [110, 116.5, 130.8, 146.8, 110, 98.0, 110, 123.5];
+  const freq = scale[(ambPhase5.i||0) % scale.length];
+  // Nota principal — sawtooth agressivo, attack rápido
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(masterVol);
+  o.type = 'sawtooth'; o.frequency.value = freq;
+  const dur = 1.1;
+  g.gain.setValueAtTime(0, AC.currentTime);
+  g.gain.linearRampToValueAtTime(0.030, AC.currentTime + 0.10);
+  g.gain.linearRampToValueAtTime(0.030, AC.currentTime + dur - 0.28);
+  g.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+  o.start(); o.stop(AC.currentTime + dur + 0.05);
+  // Pulso de baixo grave — lava pulsante (a cada nota)
+  const ob = AC.createOscillator(), gb = AC.createGain();
+  ob.connect(gb); gb.connect(masterVol);
+  ob.type = 'sine'; ob.frequency.value = 55; // A1
+  gb.gain.setValueAtTime(0, AC.currentTime);
+  gb.gain.linearRampToValueAtTime(0.040, AC.currentTime + 0.07);
+  gb.gain.linearRampToValueAtTime(0.040, AC.currentTime + 0.55);
+  gb.gain.linearRampToValueAtTime(0, AC.currentTime + 0.88);
+  ob.start(); ob.stop(AC.currentTime + 0.92);
+  // Harmônico de terça menor a cada 2 notas (dissonância)
+  if ((ambPhase5.i||0) % 2 === 0) {
+    const oh = AC.createOscillator(), gh = AC.createGain();
+    oh.connect(gh); gh.connect(masterVol);
+    oh.type = 'triangle'; oh.frequency.value = freq * 1.189;
+    gh.gain.setValueAtTime(0, AC.currentTime);
+    gh.gain.linearRampToValueAtTime(0.018, AC.currentTime + 0.18);
+    gh.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+    oh.start(); oh.stop(AC.currentTime + dur + 0.04);
+  }
+  // Sub-grave de lava a cada 4 notas (rumble profundo)
+  if ((ambPhase5.i||0) % 4 === 0) {
+    const os = AC.createOscillator(), gs = AC.createGain();
+    os.connect(gs); gs.connect(masterVol);
+    os.type = 'sine'; os.frequency.value = 27.5; // A0
+    gs.gain.setValueAtTime(0, AC.currentTime);
+    gs.gain.linearRampToValueAtTime(0.028, AC.currentTime + 0.3);
+    gs.gain.linearRampToValueAtTime(0.028, AC.currentTime + 1.8);
+    gs.gain.linearRampToValueAtTime(0, AC.currentTime + 2.6);
+    os.start(); os.stop(AC.currentTime + 2.7);
+  }
+  ambPhase5.i = (ambPhase5.i||0) + 1;
+  ambTimer = setTimeout(() => ambPhase5(id), 850 + Math.random() * 950);
+}
+
+// ── TELA DE INÍCIO ────────────────────────────────────────────
+function drawStartScreen() {
+  // Overlay escuro
+  ctx.fillStyle = 'rgba(0,8,15,0.70)';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.textAlign = 'center';
+
+  // Título
+  ctx.fillStyle = 'rgba(0,235,205,0.92)';
+  ctx.font = 'bold 34px Georgia';
+  ctx.letterSpacing = '8px';
+  ctx.fillText('VAGALUME NO ESCURO', W/2, H/2 - 60);
+
+  // Linha decorativa
+  ctx.strokeStyle = 'rgba(0,180,160,0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(W/2 - 190, H/2 - 38); ctx.lineTo(W/2 + 190, H/2 - 38); ctx.stroke();
+
+  // Instrução pulsante
+  const pulse = 0.65 + Math.sin(tick * 0.055) * 0.35;
+  ctx.fillStyle = `rgba(0,220,190,${pulse})`;
+  ctx.font = '13px Georgia';
+  ctx.letterSpacing = '4px';
+  ctx.fillText('✦  CLIQUE OU PRESSIONE QUALQUER TECLA  ✦', W/2, H/2 + 2);
+
+  // Controles
+  ctx.fillStyle = 'rgba(0,150,130,0.50)';
+  ctx.font = '11px Georgia';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('← → MOVER  ·  SHIFT VOAR RÁPIDO  ·  ELE BATE ASAS SOZINHO!', W/2, H/2 + 36);
+
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
+// ── EFEITOS VISUAIS NOVOS ─────────────────────────────────────
+
+function updateShake() {
+  if (shakeIntensity > 0.3) {
+    shakeX = (Math.random() - 0.5) * shakeIntensity;
+    shakeY = (Math.random() - 0.5) * shakeIntensity;
+    shakeIntensity *= 0.88;
+  } else {
+    shakeX = 0; shakeY = 0; shakeIntensity = 0;
+  }
+}
+
+function drawChromaticAberration() {
+  if (chromaticAlpha <= 0.01) return;
+  const offset = chromaticAlpha * 6;
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.globalAlpha = chromaticAlpha * 0.35;
+  // Red channel shift
+  ctx.drawImage(canvas, offset, 0, W, H, 0, 0, W, H);
+  // Blue channel shift
+  ctx.drawImage(canvas, -offset, 0, W, H, 0, 0, W, H);
+  ctx.restore();
+  chromaticAlpha *= 0.92;
+  if (chromaticAlpha < 0.01) chromaticAlpha = 0;
+}
+
+function updateSpeedLines() {
+  const isShift = keys['ShiftLeft'] || keys['ShiftRight'];
+  const isMoving = keys['ArrowLeft'] || keys['ArrowRight'] || keys['KeyA'] || keys['KeyD'];
+  if (isShift && isMoving && gameStarted && !gameFinished) {
+    for (let i = 0; i < 2; i++) {
+      speedLineParticles.push({
+        x: player.x + (Math.random() - 0.5) * 60,
+        y: player.y - 20 + Math.random() * 80,
+        vx: -player.facing * (8 + Math.random() * 12),
+        life: 1,
+        len: 20 + Math.random() * 40
+      });
+    }
+  }
+  for (let i = speedLineParticles.length - 1; i >= 0; i--) {
+    const sl = speedLineParticles[i];
+    sl.x += sl.vx;
+    sl.life -= 0.06;
+    if (sl.life <= 0) speedLineParticles.splice(i, 1);
+  }
+}
+
+function drawSpeedLines() {
+  if (speedLineParticles.length === 0) return;
+  const phase = getPhase();
+  const colors = ['rgba(0,220,200,','rgba(60,180,255,','rgba(160,80,255,','rgba(120,180,255,','rgba(255,120,40,'];
+  const col = colors[Math.min(phase-1, 4)];
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  for (const sl of speedLineParticles) {
+    const sx = sl.x - camX;
+    if (sx < -50 || sx > W + 50) continue;
+    ctx.globalAlpha = sl.life * 0.4;
+    ctx.strokeStyle = col + (sl.life * 0.6) + ')';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(sx, sl.y);
+    ctx.lineTo(sx + sl.len * (sl.vx > 0 ? 1 : -1), sl.y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function updateTrail() {
+  if (!gameStarted || gameFinished) return;
+  trailPositions.unshift({ x: player.x + player.w/2, y: player.y + player.h/2, phase: getPhase() });
+  if (trailPositions.length > 18) trailPositions.pop();
+}
+
+function drawTrail() {
+  if (trailPositions.length < 2) return;
+  const trailColors = [
+    [0, 200, 180],
+    [255, 160, 40],
+    [100, 220, 50],
+    [100, 160, 255],
+    [255, 80, 20]
+  ];
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  for (let i = 1; i < trailPositions.length; i++) {
+    const t = trailPositions[i];
+    const alpha = (1 - i / trailPositions.length) * 0.25;
+    const [r,g,b] = trailColors[Math.min(t.phase-1, 4)];
+    const sx = t.x - camX;
+    if (sx < -20 || sx > W + 20) continue;
+    ctx.globalAlpha = alpha;
+    const radius = (1 - i / trailPositions.length) * 8;
+    const grad = ctx.createRadialGradient(sx, t.y, 0, sx, t.y, radius);
+    grad.addColorStop(0, `rgba(${r},${g},${b},${alpha})`);
+    grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(sx, t.y, radius, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawPhaseFlash() {
+  if (phaseFlashAlpha <= 0.01) return;
+  ctx.save();
+  ctx.globalAlpha = phaseFlashAlpha;
+  ctx.fillStyle = phaseFlashColor;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+  phaseFlashAlpha *= 0.90;
+}
+
+// ── LOOP ─────────────────────────────────────────────────────
+function loop() {
+  tick++;
+  const newPhase = getPhase();
+  if (newPhase !== currentPhase) {
+    currentPhase = newPhase; phaseNotifAlpha = 2.2;
+    phaseFlashAlpha = 0.6;
+    phaseFlashColor = ['#00e8c8','#ffb030','#b060ff','#88aaff','#ff4020'][Math.min(newPhase-1, 4)];
+    shakeIntensity = 8;
+    sfxPhaseChange(newPhase); startAmbient(newPhase);
+  }
+  if (gameStarted && !gameFinished) {
+    updatePhysics(); updateParticles();
+    updateSpeedLines(); updateTrail();
+  }
+  updateBgDust(); updateCamera(); updateShake();
+
+  // Aplica screen shake
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+
+  drawBG(); drawPlatforms();
+  drawTrail(); // Trail atrás do player
+  drawPlayer();
+  for (const p of particles) p.draw(camX);
+  drawSpeedLines(); // Speed lines
+  drawLandingEffects();
+  drawPhaseFlash(); // Flash de transição de fase
+  if (!gameStarted) { drawStartScreen(); } else { drawHUD(); }
+
+  ctx.restore(); // Remove shake
+
+  drawChromaticAberration(); // Aberração cromática (pós-processamento)
+
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
