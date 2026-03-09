@@ -2247,7 +2247,7 @@ function drawBG() {
   ctx.fillStyle=vign; ctx.fillRect(0,0,W,H);
 
   // -- Poeira atmosferica (todas as fases) --
-  const dustCol = [[0,180,200],[0,160,220],[120,60,200],[180,210,255],[230,55,15],[120,40,180],[180,20,30]][Math.min(phase-1,6)];
+  const dustCol = [[0,180,200],[0,160,220],[120,60,200],[180,210,255],[230,55,15],[120,40,180],[180,20,30],[180,40,255]][Math.min(phase-1,7)];
   const [dr,dg,db]=dustCol;
   for (const d of bgDust) {
     const sx = d.x - camX*0.7;
