@@ -2893,11 +2893,10 @@ function playEnvSfx(ph) {
       g.gain.linearRampToValueAtTime(0, t+3.0);
       o.start(t); o.stop(t+3.1);
     }
-  } else {
+  } else if (ph === 5) {
     // Vulcão: explosão de lava, rocha caindo, jato de vapor
     const r = Math.random();
     if (r < 0.35) {
-      // Explosão de lava
       const nb = createNoiseBuffer(1.0, 'brown');
       if (nb) {
         const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
@@ -2910,7 +2909,6 @@ function playEnvSfx(ph) {
         ns.start(t); ns.stop(t+1.0);
       }
     } else if (r < 0.6) {
-      // Rocha caindo: impactos
       const count = 2 + Math.floor(Math.random()*3);
       for (let i = 0; i < count; i++) {
         const d = i * (0.15 + Math.random()*0.2);
@@ -2925,7 +2923,6 @@ function playEnvSfx(ph) {
         }
       }
     } else {
-      // Jato de vapor
       const nb = createNoiseBuffer(0.6, 'white');
       if (nb) {
         const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
@@ -2935,6 +2932,83 @@ function playEnvSfx(ph) {
         ng.gain.exponentialRampToValueAtTime(0.001, t+0.5);
         ns.start(t); ns.stop(t+0.6);
       }
+    }
+  } else {
+    // Fase 6 — Castelo: risada de bruxa, trovão hiper alto, morcegos, correntes
+    const r = Math.random();
+    if (r < 0.3) {
+      // RISADA DE BRUXA: glissandos agudos rápidos com vibrato
+      const laughNotes = [800, 1000, 900, 1100, 850, 1050, 950];
+      const noteCount = 4 + Math.floor(Math.random()*4);
+      for (let i = 0; i < noteCount; i++) {
+        const d = i * (0.08 + Math.random()*0.06);
+        const o = AC.createOscillator(), g = AC.createGain();
+        o.connect(g); g.connect(ambientGain);
+        if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.7; o.connect(rg); rg.connect(reverbNode); }
+        o.type = 'square';
+        const baseF = laughNotes[i % laughNotes.length] + Math.random()*200;
+        o.frequency.setValueAtTime(baseF, t+d);
+        o.frequency.exponentialRampToValueAtTime(baseF*1.5, t+d+0.04);
+        o.frequency.exponentialRampToValueAtTime(baseF*0.7, t+d+0.08);
+        g.gain.setValueAtTime(0.06, t+d);
+        g.gain.exponentialRampToValueAtTime(0.001, t+d+0.12);
+        o.start(t+d); o.stop(t+d+0.13);
+      }
+    } else if (r < 0.55) {
+      // TROVÃO HIPER ALTO — muito mais intenso que fase 3
+      const nb = createNoiseBuffer(3.5, 'brown');
+      if (nb) {
+        const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+        ns.buffer = nb; nf.type = 'lowpass'; nf.frequency.value = 350;
+        ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+        if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.8; nf.connect(rg); rg.connect(reverbNode); }
+        ng.gain.setValueAtTime(0, t);
+        ng.gain.linearRampToValueAtTime(0.35, t+0.03);
+        ng.gain.linearRampToValueAtTime(0.25, t+0.15);
+        ng.gain.linearRampToValueAtTime(0.15, t+0.5);
+        ng.gain.linearRampToValueAtTime(0.08, t+1.5);
+        ng.gain.exponentialRampToValueAtTime(0.001, t+3.2);
+        ns.start(t); ns.stop(t+3.5);
+      }
+      // Crack estridente do raio
+      const crackBuf = createNoiseBuffer(0.15, 'white');
+      if (crackBuf) {
+        const cs = AC.createBufferSource(), cf = AC.createBiquadFilter(), cg = AC.createGain();
+        cs.buffer = crackBuf; cf.type = 'highpass'; cf.frequency.value = 3000;
+        cs.connect(cf); cf.connect(cg); cg.connect(ambientGain);
+        cg.gain.setValueAtTime(0.25, t);
+        cg.gain.exponentialRampToValueAtTime(0.001, t+0.12);
+        cs.start(t); cs.stop(t+0.15);
+      }
+    } else if (r < 0.75) {
+      // Morcegos esvoaçando (chiados agudos rápidos)
+      const count = 5 + Math.floor(Math.random()*6);
+      for (let i = 0; i < count; i++) {
+        const d = i * (0.03 + Math.random()*0.04);
+        const nb = createNoiseBuffer(0.04, 'white');
+        if (nb) {
+          const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+          ns.buffer = nb; nf.type = 'bandpass'; nf.frequency.value = 5000+Math.random()*3000; nf.Q.value = 8;
+          ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+          ng.gain.setValueAtTime(0.05, t+d);
+          ng.gain.exponentialRampToValueAtTime(0.001, t+d+0.03);
+          ns.start(t+d); ns.stop(t+d+0.04);
+        }
+      }
+    } else {
+      // Correntes arrastando + porta rangendo
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.connect(g); g.connect(ambientGain);
+      if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.9; o.connect(rg); rg.connect(reverbNode); }
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(40+Math.random()*30, t);
+      o.frequency.exponentialRampToValueAtTime(80+Math.random()*60, t+1.0);
+      o.frequency.exponentialRampToValueAtTime(30, t+2.0);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.04, t+0.3);
+      g.gain.linearRampToValueAtTime(0.03, t+1.5);
+      g.gain.linearRampToValueAtTime(0, t+2.2);
+      o.start(t); o.stop(t+2.3);
     }
   }
 }
