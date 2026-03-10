@@ -3200,6 +3200,19 @@ function drawHUD() {
       if (jumpCount < best) localStorage.setItem('vgBest', jumpCount);
       stopAmbient();
       sfxFinish();
+      // Inicializa fogos de artifício
+      if (!window._fireworks) window._fireworks = [];
+      for (let i = 0; i < 30; i++) {
+        window._fireworks.push({
+          x: W*0.2 + Math.random()*W*0.6,
+          y: H*0.2 + Math.random()*H*0.4,
+          vx: (Math.random()-0.5)*3,
+          vy: (Math.random()-0.5)*3,
+          life: 1.0,
+          hue: Math.floor(Math.random()*360),
+          size: 2+Math.random()*4
+        });
+      }
     }
     const best = parseInt(localStorage.getItem('vgBest') || jumpCount);
     const rating =
@@ -3216,58 +3229,133 @@ function drawHUD() {
 
     const T2 = tick * 0.018;
     ctx.save();
-    // Fundo escuro semi-transparente
-    ctx.fillStyle = 'rgba(0,5,12,0.78)';
+    // Fundo escuro semi-transparente com tom dourado
+    const endBg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, H*0.8);
+    endBg.addColorStop(0, 'rgba(20,12,5,0.82)');
+    endBg.addColorStop(1, 'rgba(5,2,10,0.90)');
+    ctx.fillStyle = endBg;
     ctx.fillRect(0, 0, W, H);
+
+    // Fogos de artifício animados
+    if (window._fireworks) {
+      // Adiciona novos fogos periodicamente
+      if (tick % 8 === 0) {
+        window._fireworks.push({
+          x: W*0.1 + Math.random()*W*0.8,
+          y: H*0.1 + Math.random()*H*0.5,
+          vx: (Math.random()-0.5)*2.5,
+          vy: (Math.random()-0.5)*2.5,
+          life: 1.0,
+          hue: Math.floor(Math.random()*360),
+          size: 2+Math.random()*4
+        });
+      }
+      ctx.globalCompositeOperation = 'screen';
+      for (let i = window._fireworks.length - 1; i >= 0; i--) {
+        const fw = window._fireworks[i];
+        fw.x += fw.vx; fw.y += fw.vy; fw.vy += 0.03;
+        fw.life -= 0.012;
+        if (fw.life <= 0) { window._fireworks.splice(i, 1); continue; }
+        ctx.globalAlpha = fw.life * 0.8;
+        const fwg = ctx.createRadialGradient(fw.x, fw.y, 0, fw.x, fw.y, fw.size*3);
+        fwg.addColorStop(0, `hsla(${fw.hue},90%,70%,1)`);
+        fwg.addColorStop(0.5, `hsla(${fw.hue},80%,50%,0.5)`);
+        fwg.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = fwg;
+        ctx.beginPath(); ctx.arc(fw.x, fw.y, fw.size*3, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    ctx.globalAlpha = 1;
     ctx.textAlign = 'center';
 
-    // Título
-    ctx.fillStyle = 'rgba(0,235,205,0.95)';
-    ctx.font = 'bold 30px Georgia';
-    ctx.letterSpacing = '7px';
-    ctx.fillText('✦ FIM DA JORNADA ✦', W/2, H/2 - 88);
+    // Título principal
+    const titlePulse = 0.92 + Math.sin(T2*1.5)*0.08;
+    ctx.globalAlpha = titlePulse;
+    ctx.fillStyle = '#ffe040';
+    ctx.font = 'bold 32px Georgia';
+    ctx.letterSpacing = '6px';
+    ctx.fillText('✦ PARABÉNS, CAMPEÃO! ✦', W/2, H/2 - 100);
 
-    // Linha decorativa
-    ctx.strokeStyle = 'rgba(0,180,160,0.30)';
+    // Linha decorativa dourada
+    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = 'rgba(255,200,60,0.40)';
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(W/2-200, H/2-66); ctx.lineTo(W/2+200, H/2-66); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W/2-220, H/2-78); ctx.lineTo(W/2+220, H/2-78); ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Dois vagalumes juntos (o reencontro)
+    const vx1 = W/2 - 22 + Math.sin(T2*1.2)*4;
+    const vy1 = H/2 - 48 + Math.sin(T2*0.9)*3;
+    const vx2 = W/2 + 22 + Math.sin(T2*1.2+1)*4;
+    const vy2 = H/2 - 48 + Math.sin(T2*0.9+0.5)*3;
+    // Glow dos vagalumes
+    for (const [vx,vy,col] of [[vx1,vy1,'rgba(120,220,40,'],[vx2,vy2,'rgba(255,180,220,']]) {
+      const vg = ctx.createRadialGradient(vx, vy, 0, vx, vy, 22);
+      vg.addColorStop(0, col+'0.6)'); vg.addColorStop(0.5, col+'0.2)'); vg.addColorStop(1, col+'0)');
+      ctx.fillStyle = vg;
+      ctx.beginPath(); ctx.arc(vx, vy, 22, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = col+'0.9)';
+      ctx.beginPath(); ctx.arc(vx, vy, 4, 0, Math.PI*2); ctx.fill();
+    }
+    // Coração entre eles
+    const hx = W/2, hy = H/2 - 55;
+    const heartPulse = 0.7 + Math.sin(T2*3)*0.3;
+    ctx.save();
+    ctx.globalAlpha = heartPulse * 0.8;
+    ctx.fillStyle = '#ff4060';
+    ctx.translate(hx, hy);
+    ctx.scale(0.5, 0.5);
+    ctx.beginPath();
+    ctx.moveTo(0, -4);
+    ctx.bezierCurveTo(-8, -14, -18, -4, 0, 10);
+    ctx.bezierCurveTo(18, -4, 8, -14, 0, -4);
+    ctx.fill();
+    ctx.restore();
+
+    // Subtítulo
+    ctx.fillStyle = 'rgba(255,220,180,0.85)';
+    ctx.font = '14px Georgia';
+    ctx.letterSpacing = '3px';
+    ctx.fillText('O vagalume encontrou sua companheira! ✦', W/2, H/2 - 20);
 
     // Número de pulos — grande e central
     const pulse = 0.90 + Math.sin(T2*1.8)*0.10;
     ctx.globalAlpha = pulse;
-    ctx.font = 'bold 62px Georgia';
+    ctx.font = 'bold 56px Georgia';
     ctx.letterSpacing = '2px';
     ctx.fillStyle = rating[1];
-    ctx.fillText(jumpCount, W/2, H/2 + 10);
+    ctx.fillText(jumpCount, W/2, H/2 + 38);
     ctx.globalAlpha = 1;
     ctx.font = '12px Georgia';
     ctx.letterSpacing = '4px';
-    ctx.fillStyle = 'rgba(180,220,210,0.60)';
-    ctx.fillText('PULOS TOTAIS', W/2, H/2 + 30);
+    ctx.fillStyle = 'rgba(255,220,180,0.55)';
+    ctx.fillText('PULOS TOTAIS', W/2, H/2 + 56);
 
     // Estrelas
     ctx.font = 'bold 22px Georgia';
     ctx.letterSpacing = '6px';
     ctx.fillStyle = rating[1];
-    ctx.fillText(stars, W/2, H/2 + 62);
+    ctx.fillText(stars, W/2, H/2 + 86);
 
     // Rating
     ctx.font = 'bold 16px Georgia';
     ctx.letterSpacing = '5px';
     ctx.fillStyle = rating[1];
-    ctx.fillText(rating[0], W/2, H/2 + 88);
+    ctx.fillText(rating[0], W/2, H/2 + 110);
 
-    // Melhor pontuação
+    // Melhor pontuação / Novo recorde
     if (best < jumpCount) {
       ctx.font = '11px Georgia';
       ctx.letterSpacing = '2px';
-      ctx.fillStyle = 'rgba(0,235,205,0.70)';
-      ctx.fillText(`melhor: ${best} pulos`, W/2, H/2 + 112);
+      ctx.fillStyle = 'rgba(255,200,60,0.70)';
+      ctx.fillText(`melhor: ${best} pulos`, W/2, H/2 + 134);
     } else {
-      ctx.font = '11px Georgia';
-      ctx.letterSpacing = '2px';
-      ctx.fillStyle = 'rgba(255,220,60,0.80)';
-      ctx.fillText('novo recorde!', W/2, H/2 + 112);
+      ctx.font = 'bold 13px Georgia';
+      ctx.letterSpacing = '3px';
+      ctx.fillStyle = 'rgba(255,220,60,0.90)';
+      ctx.fillText('✦ NOVO RECORDE! ✦', W/2, H/2 + 134);
     }
 
     // Reiniciar
@@ -3275,8 +3363,8 @@ function drawHUD() {
     ctx.globalAlpha = blinkA;
     ctx.font = '11px Georgia';
     ctx.letterSpacing = '3px';
-    ctx.fillStyle = 'rgba(0,200,180,0.85)';
-    ctx.fillText('✦ clique ou pressione qualquer tecla para jogar novamente ✦', W/2, H/2 + 142);
+    ctx.fillStyle = 'rgba(255,200,100,0.85)';
+    ctx.fillText('✦ clique ou pressione qualquer tecla para jogar novamente ✦', W/2, H/2 + 165);
 
     ctx.textAlign = 'left';
     ctx.restore();
