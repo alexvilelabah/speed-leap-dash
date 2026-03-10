@@ -2630,11 +2630,11 @@ function drawPlayer() {
   // === CAPA ===
   // 5 pontos-âncora lerped: frente (simétrica) → perfil (capa voa para trás)
   // x positivo = para frente (direção de movimento), x negativo = para trás
-  const Ax = L(-9, -14+flt*0.5),  Ay = L(-42, -44+flt*0.3); // topo-trás do capuz
-  const Bx = L( 9,  4),            By = L(-42, -40);           // topo-frente do capuz
-  const Cx = L(18+flt*0.2, 6),     Cy = L(-7,   2);            // borda frontal baixo
+  const Ax = L(-9, -12+flt*0.4),   Ay = L(-42, -42+flt*0.2); // topo-trás do capuz
+  const Bx = L( 9,  7),            By = L(-42, -42);           // topo-frente do capuz
+  const Cx = L(18+flt*0.2, 14),    Cy = L(-7,  -5);            // borda frontal baixo
   const Dx = L( 0,  1),            Dy = L( 4,   4);            // centro baixo
-  const Ex = L(-18-flt*0.2, -18+flt*0.7), Ey = L(-7, -8+flt*0.8); // borda traseira baixo
+  const Ex = L(-18-flt*0.2, -14+flt*0.5), Ey = L(-7, -5+flt*0.5); // borda traseira baixo
 
   const cg = ctx.createLinearGradient(0,-44, 0,5);
   cg.addColorStop(0, cBrt); cg.addColorStop(0.35, cMd); cg.addColorStop(1, cDk);
