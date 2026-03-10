@@ -4551,7 +4551,7 @@ function loop() {
   drawBG(); drawPlatforms();
   drawTrail(); // Trail atrás do player
   drawPlayer();
-  for (const p of particles) p.draw(camX);
+  // for (const p of particles) p.draw(camX); // removido - bolinhas verdes
   drawSpeedLines(); // Speed lines
   // drawLandingEffects(); // removido
   drawPhaseFlash(); // Flash de transição de fase
