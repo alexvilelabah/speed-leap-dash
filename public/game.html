@@ -4358,11 +4358,10 @@ function playEnvSfx(ph) {
       g.gain.linearRampToValueAtTime(0, t+0.6);
       o.start(t); o.stop(t+0.65);
     }
-  } else {
+  } else if (ph === 9) {
     // Fase 9 — Floresta do Terror: pássaros noturnos, trovão, galhos, uivos, folhas
     const r = Math.random();
     if (r < 0.2) {
-      // Pássaro noturno — pio ecoante descendente
       const count = 2 + Math.floor(Math.random()*2);
       for (let i = 0; i < count; i++) {
         const d = i * (0.25 + Math.random()*0.15);
@@ -4380,7 +4379,6 @@ function playEnvSfx(ph) {
         o.start(t+d); o.stop(t+d+0.36);
       }
     } else if (r < 0.4) {
-      // Trovão distante — rumble profundo com reverb
       const nb = createNoiseBuffer(3.0, 'brown');
       if (nb) {
         const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
@@ -4395,7 +4393,6 @@ function playEnvSfx(ph) {
         ns.start(t); ns.stop(t+3.0);
       }
     } else if (r < 0.55) {
-      // Galhos quebrando sob peso — sequência de snaps
       const count = 2 + Math.floor(Math.random()*4);
       for (let i = 0; i < count; i++) {
         const d = i * (0.08 + Math.random()*0.12);
@@ -4410,7 +4407,6 @@ function playEnvSfx(ph) {
         }
       }
     } else if (r < 0.7) {
-      // Uivo de lobo distante
       const o = AC.createOscillator(), g = AC.createGain();
       o.connect(g); g.connect(ambientGain);
       if (reverbNode) { const rg2 = AC.createGain(); rg2.gain.value = 0.9; o.connect(rg2); rg2.connect(reverbNode); }
@@ -4426,7 +4422,6 @@ function playEnvSfx(ph) {
       g.gain.linearRampToValueAtTime(0, t+2.8);
       o.start(t); o.stop(t+2.9);
     } else if (r < 0.85) {
-      // Folhas farfalhando — noise bandpass suave
       const nb = createNoiseBuffer(0.8, 'pink');
       if (nb) {
         const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
@@ -4439,7 +4434,6 @@ function playEnvSfx(ph) {
         ns.start(t); ns.stop(t+0.8);
       }
     } else {
-      // Sapo/rã — croak grave e rápido
       const o = AC.createOscillator(), g = AC.createGain();
       o.connect(g); g.connect(ambientGain);
       o.type = 'square';
@@ -4448,6 +4442,63 @@ function playEnvSfx(ph) {
       g.gain.setValueAtTime(0.05, t);
       g.gain.exponentialRampToValueAtTime(0.001, t+0.15);
       o.start(t); o.stop(t+0.17);
+    }
+  } else {
+    // Fase 10 — Jardim Celestial: sinos de cristal, pássaros, água corrente, brisa
+    const r = Math.random();
+    if (r < 0.3) {
+      // Sinos de cristal — notas altas e claras
+      const notes = [523, 659, 784, 880, 1047];
+      const f = notes[Math.floor(Math.random()*notes.length)];
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.connect(g); g.connect(ambientGain);
+      if (reverbNode) { const rg2 = AC.createGain(); rg2.gain.value = 0.9; o.connect(rg2); rg2.connect(reverbNode); }
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.06, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t+1.5);
+      o.start(t); o.stop(t+1.6);
+    } else if (r < 0.55) {
+      // Pássaro matinal — trinado ascendente
+      const count = 3 + Math.floor(Math.random()*3);
+      for (let i = 0; i < count; i++) {
+        const d = i * (0.08 + Math.random()*0.06);
+        const o = AC.createOscillator(), g = AC.createGain();
+        o.connect(g); g.connect(ambientGain);
+        if (reverbNode) { const rg2 = AC.createGain(); rg2.gain.value = 0.6; o.connect(rg2); rg2.connect(reverbNode); }
+        o.type = 'sine';
+        const baseF = 1200 + i*200 + Math.random()*300;
+        o.frequency.setValueAtTime(baseF, t+d);
+        o.frequency.exponentialRampToValueAtTime(baseF*1.3, t+d+0.06);
+        g.gain.setValueAtTime(0.04, t+d);
+        g.gain.exponentialRampToValueAtTime(0.001, t+d+0.1);
+        o.start(t+d); o.stop(t+d+0.12);
+      }
+    } else if (r < 0.75) {
+      // Água corrente — noise suave
+      const nb = createNoiseBuffer(1.0, 'pink');
+      if (nb) {
+        const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+        ns.buffer = nb; nf.type = 'bandpass'; nf.frequency.value = 2000; nf.Q.value = 1;
+        ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+        ng.gain.setValueAtTime(0, t);
+        ng.gain.linearRampToValueAtTime(0.04, t+0.2);
+        ng.gain.linearRampToValueAtTime(0.03, t+0.6);
+        ng.gain.linearRampToValueAtTime(0, t+0.9);
+        ns.start(t); ns.stop(t+1.0);
+      }
+    } else {
+      // Brisa com folhas
+      const nb = createNoiseBuffer(0.6, 'pink');
+      if (nb) {
+        const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+        ns.buffer = nb; nf.type = 'bandpass'; nf.frequency.value = 3000; nf.Q.value = 1.5;
+        ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+        ng.gain.setValueAtTime(0, t);
+        ng.gain.linearRampToValueAtTime(0.05, t+0.1);
+        ng.gain.linearRampToValueAtTime(0.03, t+0.35);
+        ng.gain.linearRampToValueAtTime(0, t+0.55);
+        ns.start(t); ns.stop(t+0.6);
+      }
     }
   }
 }
