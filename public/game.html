@@ -2646,21 +2646,21 @@ function drawPlayer() {
   ctx.moveTo(Ax, Ay);
   // Arco do capuz (A→B)
   ctx.bezierCurveTo(
-    L(-3,-12+flt*0.4), L(-47,-48+flt*0.3),
-    L( 3,  6),         L(-47,-46),
+    L(-3,-10+flt*0.3), L(-47,-47+flt*0.2),
+    L( 3,  5),         L(-47,-47),
     Bx, By);
   // Borda frontal descendo (B→C)
   ctx.bezierCurveTo(
-    L(18+flt*0.15, 7), L(-30,-27),
-    L(18+flt*0.15, 7), L(-14,-11),
+    L(18+flt*0.15, 13), L(-30,-28),
+    L(18+flt*0.15, 13), L(-14,-12),
     Cx, Cy);
   // Borda baixo (C→D→E)
-  ctx.bezierCurveTo(L(14,5), L(3,4), L(6,3+flt*0.3), L(4,4), Dx, Dy);
-  ctx.bezierCurveTo(L(-6,-1+flt*0.3), L(4,4), L(-14,-4+flt*0.5), L(3,2), Ex, Ey);
+  ctx.bezierCurveTo(L(14,10), L(3,3), L(6,5+flt*0.2), L(4,4), Dx, Dy);
+  ctx.bezierCurveTo(L(-6,-3+flt*0.2), L(4,4), L(-14,-10+flt*0.3), L(3,1), Ex, Ey);
   // Borda traseira subindo (E→A)
   ctx.bezierCurveTo(
-    L(-18-flt*0.15,-18+flt), L(-14+flt,-8+flt*1.2),
-    L(-13,-40+flt*0.5),      L(-22,-44+flt*0.6),
+    L(-18-flt*0.15,-14+flt*0.6), L(-14+flt,-6+flt*0.8),
+    L(-13,-36+flt*0.3),           L(-22,-42+flt*0.4),
     Ax, Ay);
   ctx.fill();
   ctx.stroke();
