@@ -3551,7 +3551,7 @@ function startContinuousAmbient(ph, id) {
       ws.start(); slfo.start();
       continuousNodes.push(ws, slfo);
     }
-  } else {
+  } else if (ph === 8) {
     // Fase 8 — Cyberpunk: chuva eletrônica + synth pad + buzzing neon
     const rainBuf = createNoiseBuffer(4, 'pink');
     if (rainBuf) {
@@ -3562,8 +3562,7 @@ function startContinuousAmbient(ph, id) {
       wg.gain.value = 0.06;
       ws.start(); continuousNodes.push(ws);
     }
-    // Synth pad — acorde menor neon
-    const synthNotes = [130.8, 155.6, 196, 233.1]; // C3, Eb3, G3, Bb3
+    const synthNotes = [130.8, 155.6, 196, 233.1];
     for (const freq of synthNotes) {
       const o = AC.createOscillator(), g = AC.createGain();
       o.type = 'sawtooth'; o.frequency.value = freq;
@@ -3573,7 +3572,6 @@ function startContinuousAmbient(ph, id) {
       o.connect(lp); lp.connect(g); g.connect(ambientGain);
       o.start(); continuousNodes.push(o);
     }
-    // Buzzing neon elétrico
     const buzzO = AC.createOscillator(), buzzG = AC.createGain();
     buzzO.type = 'sawtooth'; buzzO.frequency.value = 60;
     buzzG.gain.value = 0.008;
@@ -3581,6 +3579,54 @@ function startContinuousAmbient(ph, id) {
     buzzF.type = 'bandpass'; buzzF.frequency.value = 120; buzzF.Q.value = 8;
     buzzO.connect(buzzF); buzzF.connect(buzzG); buzzG.connect(ambientGain);
     buzzO.start(); continuousNodes.push(buzzO);
+  } else {
+    // Fase 9 — Floresta do Terror: vento uivante + insetos + trovão distante + floresta densa
+    const windBuf = createNoiseBuffer(4, 'brown');
+    if (windBuf) {
+      const ws = AC.createBufferSource(), wf = AC.createBiquadFilter(), wg = AC.createGain();
+      ws.buffer = windBuf; ws.loop = true;
+      wf.type = 'bandpass'; wf.frequency.value = 250; wf.Q.value = 1.2;
+      ws.connect(wf); wf.connect(wg); wg.connect(ambientGain);
+      wg.gain.value = 0.14;
+      const lfo = AC.createOscillator(), lfoG = AC.createGain();
+      lfo.type = 'sine'; lfo.frequency.value = 0.10;
+      lfoG.gain.value = 180;
+      lfo.connect(lfoG); lfoG.connect(wf.frequency);
+      ws.start(); lfo.start();
+      continuousNodes.push(ws, lfo);
+    }
+    // Insetos/grilos noturnos
+    const cricketBuf = createNoiseBuffer(2, 'white');
+    if (cricketBuf) {
+      const cs = AC.createBufferSource(), cf = AC.createBiquadFilter(), cg = AC.createGain();
+      cs.buffer = cricketBuf; cs.loop = true;
+      cf.type = 'bandpass'; cf.frequency.value = 5200; cf.Q.value = 18;
+      cs.connect(cf); cf.connect(cg); cg.connect(ambientGain);
+      cg.gain.value = 0.05;
+      const clfo = AC.createOscillator(), clfoG = AC.createGain();
+      clfo.type = 'square'; clfo.frequency.value = 8;
+      clfoG.gain.value = 0.05;
+      clfo.connect(clfoG); clfoG.connect(cg.gain);
+      cs.start(); clfo.start();
+      continuousNodes.push(cs, clfo);
+    }
+    // Drone grave ameaçador
+    const drone = AC.createOscillator(), dg = AC.createGain();
+    drone.type = 'sine'; drone.frequency.value = 38;
+    dg.gain.value = 0.028;
+    drone.connect(dg); dg.connect(ambientGain);
+    drone.start(); continuousNodes.push(drone);
+    // Sub harmônico pulsante
+    const sub = AC.createOscillator(), sg = AC.createGain();
+    sub.type = 'sine'; sub.frequency.value = 28;
+    sg.gain.value = 0.020;
+    const subLfo = AC.createOscillator(), subLfoG = AC.createGain();
+    subLfo.type = 'sine'; subLfo.frequency.value = 0.15;
+    subLfoG.gain.value = 0.018;
+    subLfo.connect(subLfoG); subLfoG.connect(sg.gain);
+    sub.connect(sg); sg.connect(ambientGain);
+    sub.start(); subLfo.start();
+    continuousNodes.push(sub, subLfo);
   }
 }
 
