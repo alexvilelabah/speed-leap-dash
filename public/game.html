@@ -988,20 +988,7 @@ function drawBG() {
       ctx.restore();
     }
 
-    // Vagalumes ambiente (não o jogador)
-    for (let i=0; i<15; i++) {
-      const fx = d_s(i*67)*W;
-      const fy = H*0.3+d_s(i*67+1)*H*0.5;
-      const fglow = 0.2+0.3*Math.sin(T*1.2+i*2.3)+0.2*Math.sin(T*0.5+i*4.1);
-      if (fglow < 0.15) continue;
-      ctx.save(); ctx.globalCompositeOperation='screen';
-      const fg=ctx.createRadialGradient(fx,fy,0,fx,fy,12);
-      fg.addColorStop(0,`rgba(160,220,40,${fglow*0.6})`); fg.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=fg; ctx.beginPath(); ctx.arc(fx,fy,12,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle=`rgba(200,255,60,${fglow})`;
-      ctx.beginPath(); ctx.arc(fx,fy,1.5,0,Math.PI*2); ctx.fill();
-      ctx.restore();
-    }
+    // Vagalumes ambiente removidos
 
     // Solo/chão de floresta
     const ground=ctx.createLinearGradient(0,H*0.84,0,H);
@@ -4551,7 +4538,7 @@ function loop() {
   drawBG(); drawPlatforms();
   drawTrail(); // Trail atrás do player
   drawPlayer();
-  for (const p of particles) p.draw(camX);
+  // for (const p of particles) p.draw(camX); // removido - bolinhas verdes
   drawSpeedLines(); // Speed lines
   // drawLandingEffects(); // removido
   drawPhaseFlash(); // Flash de transição de fase
