@@ -56,6 +56,7 @@ document.addEventListener('keydown', e => {
   if (!gameStarted) { gameStarted = true; initAudio(); return; }
   keys[e.code] = true; e.preventDefault();
   // Debug: press keys to jump to phases
+  if (e.key === '0' || e.code === 'Digit0') { player.x = 71640; player.y = 380; camX = 71540; }
   if (e.key === '9' || e.code === 'Digit9') { player.x = 62100; player.y = 380; camX = 62000; }
   if (e.key === '8' || e.code === 'Digit8') { player.x = 52100; player.y = 380; camX = 52000; }
   if (e.key === '7' || e.code === 'Digit7') { player.x = 42100; player.y = 380; camX = 42000; }
@@ -73,11 +74,12 @@ function restartGame() {
   camX = 0; jumpCount = 0; gameFinished = false; landingEffects = [];
   currentPhase = 1; phaseNotifAlpha = 0; flashAlpha = 0;
   shakeIntensity = 0; chromaticAlpha = 0; speedLineParticles = []; trailPositions = [];
+  window._fireworks = [];
   for (const p of platforms) delete p._bx;
   startAmbient(1);
 }
 
-const WORLD_W = 71540;
+const WORLD_W = 78500;
 
 // ── PLATAFORMAS ORIGINAIS ─────────────────────────────────────
 const platforms = [
@@ -629,6 +631,52 @@ const platforms = [
    { x:69940, y:405, w:28, h:10, type:'plat' },
    { x:70040, y:430, w:1500, h:20, type:'ground' },
 
+   // ── FASE 10 — Jardim Celestial — O Reencontro ──
+   { x:71540, y:430, w:350, h:20, type:'ground' },
+   // Pétalas flutuantes — escadaria suave
+   { x:71990, y:400, w:100, h:14, type:'plat' },
+   { x:72140, y:375, w:90, h:14, type:'plat' },
+   { x:72280, y:350, w:85, h:14, type:'plat' },
+   { x:72420, y:375, w:90, h:14, type:'plat' },
+   { x:72560, y:400, w:100, h:14, type:'plat' },
+   { x:72700, y:430, w:200, h:20, type:'ground' },
+   // Ponte de cristal
+   { x:72990, y:410, w:80, h:14, type:'plat' },
+   { x:73120, y:395, w:75, h:14, type:'plat' },
+   { x:73250, y:380, w:70, h:14, type:'plat' },
+   { x:73380, y:395, w:75, h:14, type:'plat' },
+   { x:73510, y:410, w:80, h:14, type:'plat' },
+   { x:73640, y:430, w:180, h:20, type:'ground' },
+   // Espiral de luz
+   { x:73920, y:400, w:65, h:14, type:'plat' },
+   { x:74040, y:375, w:60, h:14, type:'plat' },
+   { x:74160, y:350, w:55, h:14, type:'plat' },
+   { x:74280, y:325, w:55, h:14, type:'plat' },
+   { x:74400, y:350, w:60, h:14, type:'plat' },
+   { x:74520, y:375, w:65, h:14, type:'plat' },
+   { x:74640, y:430, w:200, h:20, type:'ground' },
+   // Jardim flutuante — zig-zag
+   { x:74940, y:400, w:55, h:14, type:'plat' },
+   { x:75050, y:375, w:50, h:14, type:'plat' },
+   { x:75160, y:400, w:55, h:14, type:'plat' },
+   { x:75270, y:375, w:50, h:14, type:'plat' },
+   { x:75380, y:400, w:55, h:14, type:'plat' },
+   { x:75500, y:430, w:180, h:20, type:'ground' },
+   // Arco celestial
+   { x:75780, y:390, w:55, h:14, type:'plat' },
+   { x:75900, y:360, w:50, h:14, type:'plat' },
+   { x:76030, y:335, w:60, h:14, type:'plat' },
+   { x:76160, y:360, w:50, h:14, type:'plat' },
+   { x:76280, y:390, w:55, h:14, type:'plat' },
+   { x:76400, y:430, w:200, h:20, type:'ground' },
+   // Corrida final — o reencontro
+   { x:76700, y:405, w:50, h:14, type:'plat' },
+   { x:76810, y:390, w:45, h:14, type:'plat' },
+   { x:76920, y:405, w:50, h:14, type:'plat' },
+   { x:77030, y:390, w:45, h:14, type:'plat' },
+   { x:77140, y:405, w:50, h:14, type:'plat' },
+   { x:77260, y:430, w:1240, h:20, type:'ground' },
+
   { x: 5420, y: 335, w: 82,   h: 14, type: 'plat' },
   { x: 5750, y: 345, w: 84,   h: 14, type: 'plat' },
   { x: 6200, y: 340, w: 82,   h: 14, type: 'plat' },
@@ -723,6 +771,7 @@ let trailPositions = [];
 let phaseFlashAlpha = 0, phaseFlashColor = '#00e8c8';
 
 function getPhase() {
+  if (player.x >= 71540) return 10;
   if (player.x >= 61540) return 9;
   if (player.x >= 51540) return 8;
   if (player.x >= 41540) return 7;
@@ -806,7 +855,7 @@ function updatePhysics() {
     shakeIntensity = 18; // SCREEN SHAKE na morte
     chromaticAlpha = 1.0; // ABERRAÇÃO CROMÁTICA na morte
     sfxDeath();
-    const ph3 = getPhase(); const spawnX = ph3===9 ? 61640 : ph3===8 ? 51640 : ph3===7 ? 41640 : ph3===6 ? 32640 : ph3===5 ? 23100 : ph3===4 ? 15100 : ph3===3 ? 10100 : ph3===2 ? 5100 : 80;
+    const ph3 = getPhase(); const spawnX = ph3===10 ? 71640 : ph3===9 ? 61640 : ph3===8 ? 51640 : ph3===7 ? 41640 : ph3===6 ? 32640 : ph3===5 ? 23100 : ph3===4 ? 15100 : ph3===3 ? 10100 : ph3===2 ? 5100 : 80;
     player.x = spawnX; player.y = 380; player.vx = 0; player.vy = 0;
     trailPositions = []; // Limpa trail
   }
@@ -2474,12 +2523,141 @@ function drawBG() {
     ground.addColorStop(0,'rgba(0,0,0,0)'); ground.addColorStop(0.3,'rgba(8,14,6,0.94)'); ground.addColorStop(1,'rgba(4,8,3,0.97)');
     ctx.fillStyle=ground; ctx.fillRect(0,H*0.82,W,H*0.18);
   }
+
+  // ===============================================================
+  //  FASE 10 — Jardim Celestial — O Reencontro
+  // ===============================================================
+  else if (phase === 10) {
+    // Céu crepuscular dourado/roxo — amanhecer mágico
+    const sky=ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'#0a0520'); sky.addColorStop(0.2,'#1a0a35'); sky.addColorStop(0.4,'#2d1248');
+    sky.addColorStop(0.6,'#4a1a3a'); sky.addColorStop(0.75,'#6b2828'); sky.addColorStop(0.9,'#8a4018'); sky.addColorStop(1,'#2a1508');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+
+    // Estrelas brilhantes com tons dourados
+    for (let i=0; i<120; i++) {
+      const sx=d_s(i*37)*W, sy=d_s(i*37+1)*H*0.5;
+      const sa=0.3+0.5*d_s(i*37+2)+0.25*Math.sin(T*1.2+i*0.9);
+      const starHue = [40,30,50,20,60][i%5];
+      const starSize = d_s(i*37+3)*1.5+0.3;
+      ctx.globalAlpha=sa;
+      ctx.fillStyle=`hsl(${starHue},${80+d_s(i*37+4)*20}%,${80+d_s(i*37+5)*15}%)`;
+      ctx.beginPath(); ctx.arc(sx,sy,starSize,0,Math.PI*2); ctx.fill();
+      if (starSize > 1.2) {
+        ctx.globalAlpha = sa * 0.4;
+        ctx.fillRect(sx-5, sy-0.3, 10, 0.6);
+        ctx.fillRect(sx-0.3, sy-5, 0.6, 10);
+      }
+    }
+    ctx.globalAlpha=1;
+
+    // Sol nascente no horizonte
+    const sunX = W*0.5 + (-camX)*0.003;
+    const sunY = H*0.72;
+    ctx.save(); ctx.globalCompositeOperation='screen';
+    for (let h=0; h<4; h++) {
+      const sg = ctx.createRadialGradient(sunX, sunY, 5+h*8, sunX, sunY, 80+h*60);
+      sg.addColorStop(0, `rgba(255,200,80,${0.15-h*0.03})`);
+      sg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = sg;
+      ctx.beginPath(); ctx.arc(sunX, sunY, 80+h*60, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+    ctx.fillStyle='#ffe8a0'; ctx.beginPath(); ctx.arc(sunX, sunY, 20, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,220,140,0.6)'; ctx.beginPath(); ctx.arc(sunX, sunY, 25, 0, Math.PI*2); ctx.fill();
+
+    // Montanhas douradas distantes
+    const off1=(-camX)*0.015;
+    mtn(off1, H*0.52, 0.00012, 0, '#1a0a1e', 0.85);
+    mtn(off1*1.5, H*0.58, 0.00015, 0, '#22102a', 0.80);
+
+    // Árvores mágicas com folhas brilhantes (parallax 0.04)
+    const offTree1 = (-camX)*0.04;
+    for (let i=0; i<20; i++) {
+      const tx = ((d_s(i*47)*6000 + offTree1) % 6000) / 6000 * W;
+      if (tx < -80 || tx > W+80) continue;
+      const th = 120 + d_s(i*47+1)*100;
+      const tw = 25 + d_s(i*47+2)*30;
+      const ty = H*0.85 - th;
+      // Tronco
+      ctx.fillStyle = `rgba(40,20,15,0.9)`;
+      ctx.fillRect(tx+tw*0.35, ty+th*0.35, tw*0.3, th*0.65);
+      // Copa brilhante
+      const leafHue = [40,50,30,45,55][i%5];
+      ctx.fillStyle = `hsla(${leafHue},70%,25%,0.85)`;
+      ctx.beginPath(); ctx.arc(tx+tw/2, ty+th*0.25, tw*0.7, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(tx+tw/2-tw*0.3, ty+th*0.35, tw*0.5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(tx+tw/2+tw*0.3, ty+th*0.35, tw*0.5, 0, Math.PI*2); ctx.fill();
+      // Brilho na copa
+      ctx.save();
+      ctx.globalAlpha = 0.15 + 0.1*Math.sin(T*0.5+i*1.5);
+      ctx.globalCompositeOperation = 'screen';
+      const lg = ctx.createRadialGradient(tx+tw/2, ty+th*0.25, 0, tx+tw/2, ty+th*0.25, tw);
+      lg.addColorStop(0, `hsla(${leafHue},80%,60%,0.5)`);
+      lg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = lg;
+      ctx.beginPath(); ctx.arc(tx+tw/2, ty+th*0.25, tw, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    // Flores flutuantes (pétalas caindo)
+    for (let i=0; i<30; i++) {
+      const px2 = ((d_s(i*83)*W*2 + T*12*(0.5+d_s(i*83+1)*0.5) + (-camX)*0.1) % (W+100)) - 50;
+      const py2 = (d_s(i*83+2)*H + T*15*(0.3+d_s(i*83+3)*0.4)) % (H+20) - 10;
+      const petalHue = [340,350,320,30,50][i%5];
+      const petalA = 0.3 + 0.3*Math.sin(T*0.8+i*2);
+      const ps = 2 + d_s(i*83+4)*3;
+      ctx.save();
+      ctx.globalAlpha = petalA;
+      ctx.translate(px2, py2);
+      ctx.rotate(T*0.5+i*1.3);
+      ctx.fillStyle = `hsla(${petalHue},70%,70%,0.8)`;
+      ctx.beginPath(); ctx.ellipse(0, 0, ps, ps*0.5, 0, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    // Vaga-lumes dourados (muitos!)
+    for (let i=0; i<25; i++) {
+      const fx = ((d_s(i*97)*5000 + T*10*(d_s(i*97+5)-0.5) + (-camX)*0.08) % (W+150)) - 75;
+      const fy = H*0.15 + d_s(i*97+1)*H*0.55 + Math.sin(T*0.6+i*3.5)*18;
+      const fAlpha = 0.3 + 0.6 * Math.max(0, Math.sin(T*1.8+i*4.2));
+      ctx.save();
+      ctx.globalAlpha = fAlpha;
+      const fg2 = ctx.createRadialGradient(fx, fy, 0, fx, fy, 10);
+      fg2.addColorStop(0, 'rgba(255,220,80,0.9)');
+      fg2.addColorStop(0.5, 'rgba(255,180,40,0.3)');
+      fg2.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = fg2;
+      ctx.beginPath(); ctx.arc(fx, fy, 10, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    // Névoa dourada rasteira
+    for (let f=0; f<4; f++) {
+      const fogY = H*0.70 + f*H*0.04;
+      ctx.save();
+      ctx.globalAlpha = 0.06 + 0.04*Math.sin(T*0.2+f*1.5);
+      const fog = ctx.createLinearGradient(0, fogY, 0, fogY+H*0.08);
+      fog.addColorStop(0, 'rgba(0,0,0,0)');
+      fog.addColorStop(0.5, `rgba(${60+f*10},${35+f*8},${10+f*3},1)`);
+      fog.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = fog;
+      ctx.fillRect(0, fogY, W, H*0.08);
+      ctx.restore();
+    }
+
+    // Chão de terra com flores
+    const ground=ctx.createLinearGradient(0,H*0.82,0,H);
+    ground.addColorStop(0,'rgba(0,0,0,0)'); ground.addColorStop(0.3,'rgba(25,12,8,0.92)'); ground.addColorStop(1,'rgba(15,8,4,0.96)');
+    ctx.fillStyle=ground; ctx.fillRect(0,H*0.82,W,H*0.18);
+  }
+
   const vign = ctx.createRadialGradient(W/2,H/2,H*0.32,W/2,H/2,H*0.78);
   vign.addColorStop(0,'rgba(0,0,0,0)'); vign.addColorStop(1,'rgba(0,0,0,0.52)');
   ctx.fillStyle=vign; ctx.fillRect(0,0,W,H);
 
   // -- Poeira atmosferica (todas as fases) --
-  const dustCol = [[0,180,200],[0,160,220],[120,60,200],[180,210,255],[230,55,15],[120,40,180],[180,20,30],[180,40,255],[30,120,20]][Math.min(phase-1,8)];
+  const dustCol = [[0,180,200],[0,160,220],[120,60,200],[180,210,255],[230,55,15],[120,40,180],[180,20,30],[180,40,255],[30,120,20],[255,200,60]][Math.min(phase-1,9)];
   const [dr,dg,db]=dustCol;
   for (const d of bgDust) {
     const sx = d.x - camX*0.7;
@@ -2508,13 +2686,14 @@ function drawPlatforms() {
     { top:'#120418', bot:'#06010a', rim:'rgba(160,40,180,0.35)', hi:'rgba(200,60,220,0.28)', cr:'rgba(0,0,0,0.42)', moss:['rgba(100,20,120,0.55)','rgba(60,10,80,0.38)'] },
     { top:'#180408', bot:'#0a0104', rim:'rgba(180,20,30,0.35)', hi:'rgba(220,40,40,0.28)', cr:'rgba(0,0,0,0.48)', moss:['rgba(120,15,20,0.55)','rgba(80,8,12,0.38)'] },
     { top:'#0a0614', bot:'#04020a', rim:'rgba(180,40,255,0.35)', hi:'rgba(220,80,255,0.28)', cr:'rgba(0,0,0,0.45)', moss:['rgba(100,20,160,0.55)','rgba(60,10,100,0.38)'] },
-    { top:'#0a1208', bot:'#030804', rim:'rgba(40,180,60,0.30)', hi:'rgba(60,220,80,0.22)', cr:'rgba(0,0,0,0.50)', moss:['rgba(20,80,15,0.60)','rgba(10,50,8,0.40)'] }
+    { top:'#0a1208', bot:'#030804', rim:'rgba(40,180,60,0.30)', hi:'rgba(60,220,80,0.22)', cr:'rgba(0,0,0,0.50)', moss:['rgba(20,80,15,0.60)','rgba(10,50,8,0.40)'] },
+    { top:'#1a1208', bot:'#0a0804', rim:'rgba(255,200,60,0.35)', hi:'rgba(255,220,100,0.28)', cr:'rgba(0,0,0,0.35)', moss:['rgba(180,130,30,0.55)','rgba(120,85,15,0.38)'] }
   ];
 
   for (const p of platforms) {
     const sx = p.x - camX;
     if (sx > W+60 || sx+p.w < -60) continue;
-    const pp = p.x < 5000 ? 1 : p.x < 10000 ? 2 : p.x < 15000 ? 3 : p.x < 23000 ? 4 : p.x < 33000 ? 5 : p.x < 42000 ? 6 : p.x < 52000 ? 7 : p.x < 62000 ? 8 : 9;
+    const pp = p.x < 5000 ? 1 : p.x < 10000 ? 2 : p.x < 15000 ? 3 : p.x < 23000 ? 4 : p.x < 33000 ? 5 : p.x < 42000 ? 6 : p.x < 52000 ? 7 : p.x < 62000 ? 8 : p.x < 71540 ? 9 : 10;
     const S = STONE[pp-1];
 
     ctx.save();
@@ -2622,8 +2801,10 @@ function drawPlayer() {
     ['#0e0418','#280840','#480e6a','rgba(140,30,180,0.55)'],  // ph6 castelo roxo
     ['#180206','#3a0808','#6a0e12','rgba(180,20,30,0.55)'],   // ph7 cemitério
     ['#0a0418','#1e0840','#3a0e6a','rgba(180,40,255,0.55)'],  // ph8 cyberpunk
+    ['#0a1005','#1a2a0a','#2a4012','rgba(40,160,30,0.55)'],   // ph9 floresta terror
+    ['#1a1005','#3a2810','#5a4020','rgba(255,200,60,0.55)'],  // ph10 jardim celestial
   ];
-  const [cDk, cMd, cBrt, cRim] = palettes[Math.min(ph-1,7)];
+  const [cDk, cMd, cBrt, cRim] = palettes[Math.min(ph-1,9)];
 
   ctx.save();
   ctx.translate(px + player.w/2, py + player.h);
@@ -2994,7 +3175,7 @@ function drawHUD() {
   // ── Contador de pulos (canto superior direito) ──────────────
   ctx.save();
   ctx.textAlign = 'right';
-  const jumpCol = ['#00e8c8','#ffb030','#b060ff','#88aaff','#ff7020','#c040ff','#ff2020'][phase-1] || '#ff2020';
+  const jumpCol = ['#00e8c8','#ffb030','#b060ff','#88aaff','#ff7020','#c040ff','#ff2020','#b428ff','#1aff3a','#ffd040'][phase-1] || '#ffd040';
   ctx.font = 'bold 13px Georgia';
   ctx.fillStyle = jumpCol;
   ctx.globalAlpha = 0.85;
@@ -3020,6 +3201,19 @@ function drawHUD() {
       if (jumpCount < best) localStorage.setItem('vgBest', jumpCount);
       stopAmbient();
       sfxFinish();
+      // Inicializa fogos de artifício
+      if (!window._fireworks) window._fireworks = [];
+      for (let i = 0; i < 30; i++) {
+        window._fireworks.push({
+          x: W*0.2 + Math.random()*W*0.6,
+          y: H*0.2 + Math.random()*H*0.4,
+          vx: (Math.random()-0.5)*3,
+          vy: (Math.random()-0.5)*3,
+          life: 1.0,
+          hue: Math.floor(Math.random()*360),
+          size: 2+Math.random()*4
+        });
+      }
     }
     const best = parseInt(localStorage.getItem('vgBest') || jumpCount);
     const rating =
@@ -3036,58 +3230,133 @@ function drawHUD() {
 
     const T2 = tick * 0.018;
     ctx.save();
-    // Fundo escuro semi-transparente
-    ctx.fillStyle = 'rgba(0,5,12,0.78)';
+    // Fundo escuro semi-transparente com tom dourado
+    const endBg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, H*0.8);
+    endBg.addColorStop(0, 'rgba(20,12,5,0.82)');
+    endBg.addColorStop(1, 'rgba(5,2,10,0.90)');
+    ctx.fillStyle = endBg;
     ctx.fillRect(0, 0, W, H);
+
+    // Fogos de artifício animados
+    if (window._fireworks) {
+      // Adiciona novos fogos periodicamente
+      if (tick % 8 === 0) {
+        window._fireworks.push({
+          x: W*0.1 + Math.random()*W*0.8,
+          y: H*0.1 + Math.random()*H*0.5,
+          vx: (Math.random()-0.5)*2.5,
+          vy: (Math.random()-0.5)*2.5,
+          life: 1.0,
+          hue: Math.floor(Math.random()*360),
+          size: 2+Math.random()*4
+        });
+      }
+      ctx.globalCompositeOperation = 'screen';
+      for (let i = window._fireworks.length - 1; i >= 0; i--) {
+        const fw = window._fireworks[i];
+        fw.x += fw.vx; fw.y += fw.vy; fw.vy += 0.03;
+        fw.life -= 0.012;
+        if (fw.life <= 0) { window._fireworks.splice(i, 1); continue; }
+        ctx.globalAlpha = fw.life * 0.8;
+        const fwg = ctx.createRadialGradient(fw.x, fw.y, 0, fw.x, fw.y, fw.size*3);
+        fwg.addColorStop(0, `hsla(${fw.hue},90%,70%,1)`);
+        fwg.addColorStop(0.5, `hsla(${fw.hue},80%,50%,0.5)`);
+        fwg.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = fwg;
+        ctx.beginPath(); ctx.arc(fw.x, fw.y, fw.size*3, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    ctx.globalAlpha = 1;
     ctx.textAlign = 'center';
 
-    // Título
-    ctx.fillStyle = 'rgba(0,235,205,0.95)';
-    ctx.font = 'bold 30px Georgia';
-    ctx.letterSpacing = '7px';
-    ctx.fillText('✦ FIM DA JORNADA ✦', W/2, H/2 - 88);
+    // Título principal
+    const titlePulse = 0.92 + Math.sin(T2*1.5)*0.08;
+    ctx.globalAlpha = titlePulse;
+    ctx.fillStyle = '#ffe040';
+    ctx.font = 'bold 32px Georgia';
+    ctx.letterSpacing = '6px';
+    ctx.fillText('✦ PARABÉNS, CAMPEÃO! ✦', W/2, H/2 - 100);
 
-    // Linha decorativa
-    ctx.strokeStyle = 'rgba(0,180,160,0.30)';
+    // Linha decorativa dourada
+    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = 'rgba(255,200,60,0.40)';
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(W/2-200, H/2-66); ctx.lineTo(W/2+200, H/2-66); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W/2-220, H/2-78); ctx.lineTo(W/2+220, H/2-78); ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Dois vagalumes juntos (o reencontro)
+    const vx1 = W/2 - 22 + Math.sin(T2*1.2)*4;
+    const vy1 = H/2 - 48 + Math.sin(T2*0.9)*3;
+    const vx2 = W/2 + 22 + Math.sin(T2*1.2+1)*4;
+    const vy2 = H/2 - 48 + Math.sin(T2*0.9+0.5)*3;
+    // Glow dos vagalumes
+    for (const [vx,vy,col] of [[vx1,vy1,'rgba(120,220,40,'],[vx2,vy2,'rgba(255,180,220,']]) {
+      const vg = ctx.createRadialGradient(vx, vy, 0, vx, vy, 22);
+      vg.addColorStop(0, col+'0.6)'); vg.addColorStop(0.5, col+'0.2)'); vg.addColorStop(1, col+'0)');
+      ctx.fillStyle = vg;
+      ctx.beginPath(); ctx.arc(vx, vy, 22, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = col+'0.9)';
+      ctx.beginPath(); ctx.arc(vx, vy, 4, 0, Math.PI*2); ctx.fill();
+    }
+    // Coração entre eles
+    const hx = W/2, hy = H/2 - 55;
+    const heartPulse = 0.7 + Math.sin(T2*3)*0.3;
+    ctx.save();
+    ctx.globalAlpha = heartPulse * 0.8;
+    ctx.fillStyle = '#ff4060';
+    ctx.translate(hx, hy);
+    ctx.scale(0.5, 0.5);
+    ctx.beginPath();
+    ctx.moveTo(0, -4);
+    ctx.bezierCurveTo(-8, -14, -18, -4, 0, 10);
+    ctx.bezierCurveTo(18, -4, 8, -14, 0, -4);
+    ctx.fill();
+    ctx.restore();
+
+    // Subtítulo
+    ctx.fillStyle = 'rgba(255,220,180,0.85)';
+    ctx.font = '14px Georgia';
+    ctx.letterSpacing = '3px';
+    ctx.fillText('O vagalume encontrou sua companheira! ✦', W/2, H/2 - 20);
 
     // Número de pulos — grande e central
     const pulse = 0.90 + Math.sin(T2*1.8)*0.10;
     ctx.globalAlpha = pulse;
-    ctx.font = 'bold 62px Georgia';
+    ctx.font = 'bold 56px Georgia';
     ctx.letterSpacing = '2px';
     ctx.fillStyle = rating[1];
-    ctx.fillText(jumpCount, W/2, H/2 + 10);
+    ctx.fillText(jumpCount, W/2, H/2 + 38);
     ctx.globalAlpha = 1;
     ctx.font = '12px Georgia';
     ctx.letterSpacing = '4px';
-    ctx.fillStyle = 'rgba(180,220,210,0.60)';
-    ctx.fillText('PULOS TOTAIS', W/2, H/2 + 30);
+    ctx.fillStyle = 'rgba(255,220,180,0.55)';
+    ctx.fillText('PULOS TOTAIS', W/2, H/2 + 56);
 
     // Estrelas
     ctx.font = 'bold 22px Georgia';
     ctx.letterSpacing = '6px';
     ctx.fillStyle = rating[1];
-    ctx.fillText(stars, W/2, H/2 + 62);
+    ctx.fillText(stars, W/2, H/2 + 86);
 
     // Rating
     ctx.font = 'bold 16px Georgia';
     ctx.letterSpacing = '5px';
     ctx.fillStyle = rating[1];
-    ctx.fillText(rating[0], W/2, H/2 + 88);
+    ctx.fillText(rating[0], W/2, H/2 + 110);
 
-    // Melhor pontuação
+    // Melhor pontuação / Novo recorde
     if (best < jumpCount) {
       ctx.font = '11px Georgia';
       ctx.letterSpacing = '2px';
-      ctx.fillStyle = 'rgba(0,235,205,0.70)';
-      ctx.fillText(`melhor: ${best} pulos`, W/2, H/2 + 112);
+      ctx.fillStyle = 'rgba(255,200,60,0.70)';
+      ctx.fillText(`melhor: ${best} pulos`, W/2, H/2 + 134);
     } else {
-      ctx.font = '11px Georgia';
-      ctx.letterSpacing = '2px';
-      ctx.fillStyle = 'rgba(255,220,60,0.80)';
-      ctx.fillText('novo recorde!', W/2, H/2 + 112);
+      ctx.font = 'bold 13px Georgia';
+      ctx.letterSpacing = '3px';
+      ctx.fillStyle = 'rgba(255,220,60,0.90)';
+      ctx.fillText('✦ NOVO RECORDE! ✦', W/2, H/2 + 134);
     }
 
     // Reiniciar
@@ -3095,8 +3364,8 @@ function drawHUD() {
     ctx.globalAlpha = blinkA;
     ctx.font = '11px Georgia';
     ctx.letterSpacing = '3px';
-    ctx.fillStyle = 'rgba(0,200,180,0.85)';
-    ctx.fillText('✦ clique ou pressione qualquer tecla para jogar novamente ✦', W/2, H/2 + 142);
+    ctx.fillStyle = 'rgba(255,200,100,0.85)';
+    ctx.fillText('✦ clique ou pressione qualquer tecla para jogar novamente ✦', W/2, H/2 + 165);
 
     ctx.textAlign = 'left';
     ctx.restore();
@@ -3108,8 +3377,8 @@ function drawHUD() {
     ctx.save();
     const na = Math.min(1, phaseNotifAlpha);
     ctx.globalAlpha = na * na;
-    const phNames = ['','Floresta Sombria','Oceano Profundo','Cristal Elétrico','Vazio Estelar','Abismo Carmesim','Castelo Assombrado','Cemitério Maldito','Neon District','Floresta do Terror'];
-    const phColor = ['','rgba(0,230,200,0.95)','rgba(0,180,240,0.95)','rgba(160,80,255,0.95)','rgba(130,190,255,0.95)','rgba(255,80,30,0.95)','rgba(180,50,220,0.95)','rgba(200,20,30,0.95)','rgba(180,40,255,0.95)'];
+    const phNames = ['','Floresta Sombria','Oceano Profundo','Cristal Elétrico','Vazio Estelar','Abismo Carmesim','Castelo Assombrado','Cemitério Maldito','Neon District','Floresta do Terror','Jardim Celestial'];
+    const phColor = ['','rgba(0,230,200,0.95)','rgba(0,180,240,0.95)','rgba(160,80,255,0.95)','rgba(130,190,255,0.95)','rgba(255,80,30,0.95)','rgba(180,50,220,0.95)','rgba(200,20,30,0.95)','rgba(180,40,255,0.95)','rgba(30,200,50,0.95)','rgba(255,200,60,0.95)'];
     ctx.fillStyle = phColor[phase] || 'rgba(0,230,200,0.95)';
     ctx.font = 'bold 38px Georgia'; ctx.textAlign = 'center'; ctx.letterSpacing = '6px';
     ctx.fillText(`✦ FASE ${phase} ✦`, W/2, H/2 - 10);
@@ -3323,7 +3592,8 @@ function startAmbient(ph) {
   else if (ph === 6) { ambPhase6.i = 0; ambPhase6(id); }
   else if (ph === 7) { ambPhase7.i = 0; ambPhase7(id); }
   else if (ph === 8) { ambPhase8.i = 0; ambPhase8(id); }
-  else { ambPhase9.i = 0; ambPhase9(id); }
+  else if (ph === 9) { ambPhase9.i = 0; ambPhase9(id); }
+  else { ambPhase10.i = 0; ambPhase10(id); }
   // Start random environmental sfx
   startEnvSfx(ph, id);
 }
@@ -3588,7 +3858,7 @@ function startContinuousAmbient(ph, id) {
     buzzF.type = 'bandpass'; buzzF.frequency.value = 120; buzzF.Q.value = 8;
     buzzO.connect(buzzF); buzzF.connect(buzzG); buzzG.connect(ambientGain);
     buzzO.start(); continuousNodes.push(buzzO);
-  } else {
+  } else if (ph === 9) {
     // Fase 9 — Floresta do Terror: vento uivante + insetos + trovão distante + floresta densa
     const windBuf = createNoiseBuffer(4, 'brown');
     if (windBuf) {
@@ -3604,7 +3874,6 @@ function startContinuousAmbient(ph, id) {
       ws.start(); lfo.start();
       continuousNodes.push(ws, lfo);
     }
-    // Insetos/grilos noturnos
     const cricketBuf = createNoiseBuffer(2, 'white');
     if (cricketBuf) {
       const cs = AC.createBufferSource(), cf = AC.createBiquadFilter(), cg = AC.createGain();
@@ -3619,13 +3888,11 @@ function startContinuousAmbient(ph, id) {
       cs.start(); clfo.start();
       continuousNodes.push(cs, clfo);
     }
-    // Drone grave ameaçador
     const drone = AC.createOscillator(), dg = AC.createGain();
     drone.type = 'sine'; drone.frequency.value = 38;
     dg.gain.value = 0.028;
     drone.connect(dg); dg.connect(ambientGain);
     drone.start(); continuousNodes.push(drone);
-    // Sub harmônico pulsante
     const sub = AC.createOscillator(), sg = AC.createGain();
     sub.type = 'sine'; sub.frequency.value = 28;
     sg.gain.value = 0.020;
@@ -3636,6 +3903,46 @@ function startContinuousAmbient(ph, id) {
     sub.connect(sg); sg.connect(ambientGain);
     sub.start(); subLfo.start();
     continuousNodes.push(sub, subLfo);
+  } else {
+    // Fase 10 — Jardim Celestial: vento suave + sinos de cristal + pássaros matinais
+    const windBuf = createNoiseBuffer(4, 'pink');
+    if (windBuf) {
+      const ws = AC.createBufferSource(), wf = AC.createBiquadFilter(), wg = AC.createGain();
+      ws.buffer = windBuf; ws.loop = true;
+      wf.type = 'lowpass'; wf.frequency.value = 500; wf.Q.value = 0.5;
+      ws.connect(wf); wf.connect(wg); wg.connect(ambientGain);
+      wg.gain.value = 0.10;
+      const lfo = AC.createOscillator(), lfoG = AC.createGain();
+      lfo.type = 'sine'; lfo.frequency.value = 0.12;
+      lfoG.gain.value = 200;
+      lfo.connect(lfoG); lfoG.connect(wf.frequency);
+      ws.start(); lfo.start();
+      continuousNodes.push(ws, lfo);
+    }
+    // Drone harmonioso e suave
+    const chordNotes = [261.6, 329.6, 392];
+    for (const freq of chordNotes) {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.value = 0.012;
+      o.connect(g); g.connect(ambientGain);
+      o.start(); continuousNodes.push(o);
+    }
+    // Pássaros matinais (chirps aleatórios)
+    const birdBuf = createNoiseBuffer(2, 'white');
+    if (birdBuf) {
+      const bs = AC.createBufferSource(), bf = AC.createBiquadFilter(), bg2 = AC.createGain();
+      bs.buffer = birdBuf; bs.loop = true;
+      bf.type = 'bandpass'; bf.frequency.value = 4500; bf.Q.value = 20;
+      bs.connect(bf); bf.connect(bg2); bg2.connect(ambientGain);
+      bg2.gain.value = 0.025;
+      const blfo = AC.createOscillator(), blfoG = AC.createGain();
+      blfo.type = 'square'; blfo.frequency.value = 5;
+      blfoG.gain.value = 0.025;
+      blfo.connect(blfoG); blfoG.connect(bg2.gain);
+      bs.start(); blfo.start();
+      continuousNodes.push(bs, blfo);
+    }
   }
 }
 
@@ -3654,7 +3961,8 @@ function startEnvSfx(ph, id) {
                   ph === 6 ? 800+Math.random()*2000 :
                   ph === 7 ? 700+Math.random()*1800 :
                   ph === 8 ? 700+Math.random()*1800 :
-                             1500+Math.random()*3000;
+                  ph === 9 ? 1500+Math.random()*3000 :
+                              2000+Math.random()*4000;
     sfxTimers.push(setTimeout(() => scheduleNext(), delay));
   }
   sfxTimers.push(setTimeout(() => scheduleNext(), 1500));
@@ -4051,11 +4359,10 @@ function playEnvSfx(ph) {
       g.gain.linearRampToValueAtTime(0, t+0.6);
       o.start(t); o.stop(t+0.65);
     }
-  } else {
+  } else if (ph === 9) {
     // Fase 9 — Floresta do Terror: pássaros noturnos, trovão, galhos, uivos, folhas
     const r = Math.random();
     if (r < 0.2) {
-      // Pássaro noturno — pio ecoante descendente
       const count = 2 + Math.floor(Math.random()*2);
       for (let i = 0; i < count; i++) {
         const d = i * (0.25 + Math.random()*0.15);
@@ -4073,7 +4380,6 @@ function playEnvSfx(ph) {
         o.start(t+d); o.stop(t+d+0.36);
       }
     } else if (r < 0.4) {
-      // Trovão distante — rumble profundo com reverb
       const nb = createNoiseBuffer(3.0, 'brown');
       if (nb) {
         const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
@@ -4088,7 +4394,6 @@ function playEnvSfx(ph) {
         ns.start(t); ns.stop(t+3.0);
       }
     } else if (r < 0.55) {
-      // Galhos quebrando sob peso — sequência de snaps
       const count = 2 + Math.floor(Math.random()*4);
       for (let i = 0; i < count; i++) {
         const d = i * (0.08 + Math.random()*0.12);
@@ -4103,7 +4408,6 @@ function playEnvSfx(ph) {
         }
       }
     } else if (r < 0.7) {
-      // Uivo de lobo distante
       const o = AC.createOscillator(), g = AC.createGain();
       o.connect(g); g.connect(ambientGain);
       if (reverbNode) { const rg2 = AC.createGain(); rg2.gain.value = 0.9; o.connect(rg2); rg2.connect(reverbNode); }
@@ -4119,7 +4423,6 @@ function playEnvSfx(ph) {
       g.gain.linearRampToValueAtTime(0, t+2.8);
       o.start(t); o.stop(t+2.9);
     } else if (r < 0.85) {
-      // Folhas farfalhando — noise bandpass suave
       const nb = createNoiseBuffer(0.8, 'pink');
       if (nb) {
         const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
@@ -4132,7 +4435,6 @@ function playEnvSfx(ph) {
         ns.start(t); ns.stop(t+0.8);
       }
     } else {
-      // Sapo/rã — croak grave e rápido
       const o = AC.createOscillator(), g = AC.createGain();
       o.connect(g); g.connect(ambientGain);
       o.type = 'square';
@@ -4141,6 +4443,63 @@ function playEnvSfx(ph) {
       g.gain.setValueAtTime(0.05, t);
       g.gain.exponentialRampToValueAtTime(0.001, t+0.15);
       o.start(t); o.stop(t+0.17);
+    }
+  } else {
+    // Fase 10 — Jardim Celestial: sinos de cristal, pássaros, água corrente, brisa
+    const r = Math.random();
+    if (r < 0.3) {
+      // Sinos de cristal — notas altas e claras
+      const notes = [523, 659, 784, 880, 1047];
+      const f = notes[Math.floor(Math.random()*notes.length)];
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.connect(g); g.connect(ambientGain);
+      if (reverbNode) { const rg2 = AC.createGain(); rg2.gain.value = 0.9; o.connect(rg2); rg2.connect(reverbNode); }
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.06, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t+1.5);
+      o.start(t); o.stop(t+1.6);
+    } else if (r < 0.55) {
+      // Pássaro matinal — trinado ascendente
+      const count = 3 + Math.floor(Math.random()*3);
+      for (let i = 0; i < count; i++) {
+        const d = i * (0.08 + Math.random()*0.06);
+        const o = AC.createOscillator(), g = AC.createGain();
+        o.connect(g); g.connect(ambientGain);
+        if (reverbNode) { const rg2 = AC.createGain(); rg2.gain.value = 0.6; o.connect(rg2); rg2.connect(reverbNode); }
+        o.type = 'sine';
+        const baseF = 1200 + i*200 + Math.random()*300;
+        o.frequency.setValueAtTime(baseF, t+d);
+        o.frequency.exponentialRampToValueAtTime(baseF*1.3, t+d+0.06);
+        g.gain.setValueAtTime(0.04, t+d);
+        g.gain.exponentialRampToValueAtTime(0.001, t+d+0.1);
+        o.start(t+d); o.stop(t+d+0.12);
+      }
+    } else if (r < 0.75) {
+      // Água corrente — noise suave
+      const nb = createNoiseBuffer(1.0, 'pink');
+      if (nb) {
+        const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+        ns.buffer = nb; nf.type = 'bandpass'; nf.frequency.value = 2000; nf.Q.value = 1;
+        ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+        ng.gain.setValueAtTime(0, t);
+        ng.gain.linearRampToValueAtTime(0.04, t+0.2);
+        ng.gain.linearRampToValueAtTime(0.03, t+0.6);
+        ng.gain.linearRampToValueAtTime(0, t+0.9);
+        ns.start(t); ns.stop(t+1.0);
+      }
+    } else {
+      // Brisa com folhas
+      const nb = createNoiseBuffer(0.6, 'pink');
+      if (nb) {
+        const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+        ns.buffer = nb; nf.type = 'bandpass'; nf.frequency.value = 3000; nf.Q.value = 1.5;
+        ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+        ng.gain.setValueAtTime(0, t);
+        ng.gain.linearRampToValueAtTime(0.05, t+0.1);
+        ng.gain.linearRampToValueAtTime(0.03, t+0.35);
+        ng.gain.linearRampToValueAtTime(0, t+0.55);
+        ns.start(t); ns.stop(t+0.6);
+      }
     }
   }
 }
@@ -4389,6 +4748,44 @@ function ambPhase9(id) {
   ambTimer = setTimeout(() => ambPhase9(id), 1800 + Math.random() * 2500);
 }
 
+function ambPhase10(id) {
+  if (!AC || ambPhaseId !== id) return;
+  // Escala maior luminosa — esperança e reencontro
+  const scale = [261.6, 329.6, 392, 440, 523.3, 587.3, 659.3, 587.3];
+  const freq = scale[(ambPhase10.i||0) % scale.length];
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(ambientGain);
+  if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.8; o.connect(rg); rg.connect(reverbNode); }
+  o.type = 'sine'; o.frequency.value = freq;
+  const dur = 1.8;
+  g.gain.setValueAtTime(0, AC.currentTime);
+  g.gain.linearRampToValueAtTime(0.035, AC.currentTime + 0.4);
+  g.gain.linearRampToValueAtTime(0.035, AC.currentTime + dur - 0.5);
+  g.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+  o.start(); o.stop(AC.currentTime + dur + 0.1);
+  // Harmônico de oitava com delay
+  const o2 = AC.createOscillator(), g2 = AC.createGain();
+  o2.connect(g2); g2.connect(ambientGain);
+  o2.type = 'sine'; o2.frequency.value = freq * 2;
+  g2.gain.setValueAtTime(0, AC.currentTime + 0.2);
+  g2.gain.linearRampToValueAtTime(0.012, AC.currentTime + 0.6);
+  g2.gain.linearRampToValueAtTime(0, AC.currentTime + dur * 0.8);
+  o2.start(AC.currentTime + 0.2); o2.stop(AC.currentTime + dur);
+  // Sub bass suave
+  if ((ambPhase10.i||0) % 4 === 0) {
+    const ob = AC.createOscillator(), gb = AC.createGain();
+    ob.connect(gb); gb.connect(ambientGain);
+    ob.type = 'sine'; ob.frequency.value = freq * 0.25;
+    gb.gain.setValueAtTime(0, AC.currentTime);
+    gb.gain.linearRampToValueAtTime(0.025, AC.currentTime + 0.8);
+    gb.gain.linearRampToValueAtTime(0.025, AC.currentTime + 3.5);
+    gb.gain.linearRampToValueAtTime(0, AC.currentTime + 4.5);
+    ob.start(); ob.stop(AC.currentTime + 4.6);
+  }
+  ambPhase10.i = (ambPhase10.i||0) + 1;
+  ambTimer = setTimeout(() => ambPhase10(id), 1400 + Math.random() * 2000);
+}
+
 // ── TELA DE INÍCIO ────────────────────────────────────────────
 function drawStartScreen() {
   // Overlay escuro
@@ -4478,8 +4875,8 @@ function updateSpeedLines() {
 function drawSpeedLines() {
   if (speedLineParticles.length === 0) return;
   const phase = getPhase();
-  const colors = ['rgba(0,220,200,','rgba(60,180,255,','rgba(160,80,255,','rgba(120,180,255,','rgba(255,120,40,','rgba(180,60,255,','rgba(200,20,30,','rgba(180,40,255,'];
-  const col = colors[Math.min(phase-1, 7)];
+  const colors = ['rgba(0,220,200,','rgba(60,180,255,','rgba(160,80,255,','rgba(120,180,255,','rgba(255,120,40,','rgba(180,60,255,','rgba(200,20,30,','rgba(180,40,255,','rgba(40,200,60,','rgba(255,200,60,'];
+  const col = colors[Math.min(phase-1, 9)];
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
   for (const sl of speedLineParticles) {
@@ -4512,14 +4909,16 @@ function drawTrail() {
     [255, 80, 20],
     [180, 50, 220],
     [200, 20, 30],
-    [180, 40, 255]
+    [180, 40, 255],
+    [40, 200, 60],
+    [255, 200, 60]
   ];
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
   for (let i = 1; i < trailPositions.length; i++) {
     const t = trailPositions[i];
     const alpha = (1 - i / trailPositions.length) * 0.25;
-    const [r,g,b] = trailColors[Math.min(t.phase-1, 7)];
+    const [r,g,b] = trailColors[Math.min(t.phase-1, 9)];
     const sx = t.x - camX;
     if (sx < -20 || sx > W + 20) continue;
     ctx.globalAlpha = alpha;
@@ -4550,7 +4949,7 @@ function loop() {
   if (newPhase !== currentPhase) {
     currentPhase = newPhase; phaseNotifAlpha = 2.2;
     phaseFlashAlpha = newPhase >= 6 ? 1.0 : 0.6;
-    phaseFlashColor = ['#00e8c8','#ffb030','#b060ff','#88aaff','#ff4020','#a020e0','#cc0015','#b428ff','#1aff3a'][Math.min(newPhase-1, 8)];
+    phaseFlashColor = ['#00e8c8','#ffb030','#b060ff','#88aaff','#ff4020','#a020e0','#cc0015','#b428ff','#1aff3a','#ffd040'][Math.min(newPhase-1, 9)];
     shakeIntensity = newPhase >= 6 ? 20 : 8;
     chromaticAlpha = newPhase >= 6 ? 0.8 : 0;
     sfxPhaseChange(newPhase); startAmbient(newPhase);
