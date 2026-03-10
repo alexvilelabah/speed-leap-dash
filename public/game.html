@@ -4551,6 +4551,7 @@ function loop() {
   drawPlayer();
   // for (const p of particles) p.draw(camX); // removido - bolinhas verdes
   drawSpeedLines(); // Speed lines
+  drawDustParticles();
   // drawLandingEffects(); // removido
   drawPhaseFlash(); // Flash de transição de fase
   if (!gameStarted) { drawStartScreen(); } else { drawHUD(); }
