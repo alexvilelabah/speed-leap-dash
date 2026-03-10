@@ -3992,11 +3992,10 @@ function playEnvSfx(ph) {
         ns.start(t); ns.stop(t+0.5);
       }
     }
-  } else {
+  } else if (ph === 8) {
     // Fase 8 — Cyberpunk: sirenes distantes, interferência eletrônica, anúncios holográficos
     const r = Math.random();
     if (r < 0.3) {
-      // Sirene policial distante
       const o = AC.createOscillator(), g = AC.createGain();
       o.connect(g); g.connect(ambientGain);
       o.type = 'sine';
@@ -4010,7 +4009,6 @@ function playEnvSfx(ph) {
       g.gain.linearRampToValueAtTime(0, t+1.5);
       o.start(t); o.stop(t+1.6);
     } else if (r < 0.55) {
-      // Interferência/glitch eletrônico
       const nb = createNoiseBuffer(0.15, 'white');
       if (nb) {
         const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
@@ -4021,7 +4019,6 @@ function playEnvSfx(ph) {
         ns.start(t); ns.stop(t+0.15);
       }
     } else if (r < 0.75) {
-      // Buzina de carro voador
       const o = AC.createOscillator(), g = AC.createGain();
       o.connect(g); g.connect(ambientGain);
       o.type = 'square';
@@ -4030,7 +4027,6 @@ function playEnvSfx(ph) {
       g.gain.exponentialRampToValueAtTime(0.001, t+0.6);
       o.start(t); o.stop(t+0.7);
     } else {
-      // Anúncio holográfico — voz distorcida
       const o = AC.createOscillator(), g = AC.createGain();
       o.connect(g); g.connect(ambientGain);
       if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.6; o.connect(rg); rg.connect(reverbNode); }
@@ -4045,6 +4041,97 @@ function playEnvSfx(ph) {
       g.gain.linearRampToValueAtTime(0.015, t+0.4);
       g.gain.linearRampToValueAtTime(0, t+0.6);
       o.start(t); o.stop(t+0.65);
+    }
+  } else {
+    // Fase 9 — Floresta do Terror: pássaros noturnos, trovão, galhos, uivos, folhas
+    const r = Math.random();
+    if (r < 0.2) {
+      // Pássaro noturno — pio ecoante descendente
+      const count = 2 + Math.floor(Math.random()*2);
+      for (let i = 0; i < count; i++) {
+        const d = i * (0.25 + Math.random()*0.15);
+        const o = AC.createOscillator(), g = AC.createGain();
+        o.connect(g); g.connect(ambientGain);
+        if (reverbNode) { const rg2 = AC.createGain(); rg2.gain.value = 0.8; o.connect(rg2); rg2.connect(reverbNode); }
+        o.type = 'sine';
+        const baseF = 600 + Math.random()*400;
+        o.frequency.setValueAtTime(baseF, t+d);
+        o.frequency.exponentialRampToValueAtTime(baseF*0.65, t+d+0.3);
+        g.gain.setValueAtTime(0, t+d);
+        g.gain.linearRampToValueAtTime(0.05, t+d+0.04);
+        g.gain.linearRampToValueAtTime(0.04, t+d+0.15);
+        g.gain.linearRampToValueAtTime(0, t+d+0.35);
+        o.start(t+d); o.stop(t+d+0.36);
+      }
+    } else if (r < 0.4) {
+      // Trovão distante — rumble profundo com reverb
+      const nb = createNoiseBuffer(3.0, 'brown');
+      if (nb) {
+        const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+        ns.buffer = nb; nf.type = 'lowpass'; nf.frequency.value = 200;
+        ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+        if (reverbNode) { const rg2 = AC.createGain(); rg2.gain.value = 0.7; nf.connect(rg2); rg2.connect(reverbNode); }
+        ng.gain.setValueAtTime(0, t);
+        ng.gain.linearRampToValueAtTime(0.22, t+0.04);
+        ng.gain.linearRampToValueAtTime(0.15, t+0.2);
+        ng.gain.linearRampToValueAtTime(0.08, t+0.8);
+        ng.gain.exponentialRampToValueAtTime(0.001, t+2.8);
+        ns.start(t); ns.stop(t+3.0);
+      }
+    } else if (r < 0.55) {
+      // Galhos quebrando sob peso — sequência de snaps
+      const count = 2 + Math.floor(Math.random()*4);
+      for (let i = 0; i < count; i++) {
+        const d = i * (0.08 + Math.random()*0.12);
+        const nb = createNoiseBuffer(0.06, 'white');
+        if (nb) {
+          const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+          ns.buffer = nb; nf.type = 'highpass'; nf.frequency.value = 2500+Math.random()*2000;
+          ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+          ng.gain.setValueAtTime(0.08, t+d);
+          ng.gain.exponentialRampToValueAtTime(0.001, t+d+0.04);
+          ns.start(t+d); ns.stop(t+d+0.06);
+        }
+      }
+    } else if (r < 0.7) {
+      // Uivo de lobo distante
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.connect(g); g.connect(ambientGain);
+      if (reverbNode) { const rg2 = AC.createGain(); rg2.gain.value = 0.9; o.connect(rg2); rg2.connect(reverbNode); }
+      o.type = 'sine';
+      const baseF = 200 + Math.random()*60;
+      o.frequency.setValueAtTime(baseF, t);
+      o.frequency.linearRampToValueAtTime(baseF*1.8, t+0.6);
+      o.frequency.linearRampToValueAtTime(baseF*1.5, t+1.5);
+      o.frequency.exponentialRampToValueAtTime(baseF*0.7, t+2.5);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.035, t+0.3);
+      g.gain.linearRampToValueAtTime(0.03, t+1.5);
+      g.gain.linearRampToValueAtTime(0, t+2.8);
+      o.start(t); o.stop(t+2.9);
+    } else if (r < 0.85) {
+      // Folhas farfalhando — noise bandpass suave
+      const nb = createNoiseBuffer(0.8, 'pink');
+      if (nb) {
+        const ns = AC.createBufferSource(), nf = AC.createBiquadFilter(), ng = AC.createGain();
+        ns.buffer = nb; nf.type = 'bandpass'; nf.frequency.value = 3500; nf.Q.value = 2;
+        ns.connect(nf); nf.connect(ng); ng.connect(ambientGain);
+        ng.gain.setValueAtTime(0, t);
+        ng.gain.linearRampToValueAtTime(0.06, t+0.1);
+        ng.gain.linearRampToValueAtTime(0.04, t+0.4);
+        ng.gain.linearRampToValueAtTime(0, t+0.7);
+        ns.start(t); ns.stop(t+0.8);
+      }
+    } else {
+      // Sapo/rã — croak grave e rápido
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.connect(g); g.connect(ambientGain);
+      o.type = 'square';
+      o.frequency.setValueAtTime(160+Math.random()*40, t);
+      o.frequency.exponentialRampToValueAtTime(100, t+0.12);
+      g.gain.setValueAtTime(0.05, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t+0.15);
+      o.start(t); o.stop(t+0.17);
     }
   }
 }
