@@ -2800,8 +2800,10 @@ function drawPlayer() {
     ['#0e0418','#280840','#480e6a','rgba(140,30,180,0.55)'],  // ph6 castelo roxo
     ['#180206','#3a0808','#6a0e12','rgba(180,20,30,0.55)'],   // ph7 cemitério
     ['#0a0418','#1e0840','#3a0e6a','rgba(180,40,255,0.55)'],  // ph8 cyberpunk
+    ['#0a1005','#1a2a0a','#2a4012','rgba(40,160,30,0.55)'],   // ph9 floresta terror
+    ['#1a1005','#3a2810','#5a4020','rgba(255,200,60,0.55)'],  // ph10 jardim celestial
   ];
-  const [cDk, cMd, cBrt, cRim] = palettes[Math.min(ph-1,7)];
+  const [cDk, cMd, cBrt, cRim] = palettes[Math.min(ph-1,9)];
 
   ctx.save();
   ctx.translate(px + player.w/2, py + player.h);
