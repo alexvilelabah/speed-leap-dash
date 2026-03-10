@@ -3516,15 +3516,7 @@ function startContinuousAmbient(ph, id) {
       ws.start(); lfo.start();
       continuousNodes.push(ws, lfo);
     }
-    // Coro fúnebre — acordes menores graves
-    const choirNotes = [49, 55, 65.4, 73.4]; // Db1, A1, C2, D2
-    for (const freq of choirNotes) {
-      const o = AC.createOscillator(), g = AC.createGain();
-      o.type = 'sine'; o.frequency.value = freq;
-      g.gain.value = 0.022;
-      o.connect(g); g.connect(ambientGain);
-      o.start(); continuousNodes.push(o);
-    }
+    // (coro fúnebre removido — som irritante)
     // Batida de coração lenta
     const hbLfo = AC.createOscillator(), hbG = AC.createGain();
     hbLfo.type = 'sine'; hbLfo.frequency.value = 35;
