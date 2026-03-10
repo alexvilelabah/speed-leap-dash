@@ -3643,7 +3643,9 @@ function startEnvSfx(ph, id) {
                   ph === 4 ? 4000+Math.random()*6000 :
                   ph === 5 ? 1000+Math.random()*2500 :
                   ph === 6 ? 800+Math.random()*2000 :
-                             700+Math.random()*1800;
+                  ph === 7 ? 700+Math.random()*1800 :
+                  ph === 8 ? 700+Math.random()*1800 :
+                             1500+Math.random()*3000;
     sfxTimers.push(setTimeout(() => scheduleNext(), delay));
   }
   sfxTimers.push(setTimeout(() => scheduleNext(), 1500));
