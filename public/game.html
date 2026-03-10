@@ -716,6 +716,7 @@ let gameStarted = false;
 let jumpCount = 0;
 let gameFinished = false;
 let landingEffects = [];
+let dustParticles = [];
 
 // ── NOVOS EFEITOS VISUAIS ────────────────────────────────────
 let shakeX = 0, shakeY = 0, shakeIntensity = 0;
@@ -779,7 +780,17 @@ function updatePhysics() {
       player.onGround = true;
       jumpCount++;
       if (p.type !== 'ground') shakeIntensity = Math.max(shakeIntensity, 3); // Mini shake ao pousar em plataformas
-      // landingEffects removidos
+      // Poeira ao pousar
+      for (let i = 0; i < 6; i++) {
+        dustParticles.push({
+          x: player.x + player.w/2 + (Math.random()-0.5)*16,
+          y: player.y + player.h,
+          vx: (Math.random()-0.5)*2.5,
+          vy: -Math.random()*1.8 - 0.5,
+          life: 1,
+          size: Math.random()*3 + 1.5,
+        });
+      }
       sfxJump(); sfxLand();
       break;
     }
@@ -2720,6 +2731,25 @@ function drawPlayer() {
   ctx.restore();
 }
 
+function drawDustParticles() {
+  ctx.save();
+  for (let i = dustParticles.length - 1; i >= 0; i--) {
+    const d = dustParticles[i];
+    d.x += d.vx;
+    d.y += d.vy;
+    d.vy += 0.04;
+    d.life -= 0.03;
+    if (d.life <= 0) { dustParticles.splice(i, 1); continue; }
+    const sx = d.x - camX;
+    ctx.globalAlpha = d.life * 0.45;
+    ctx.fillStyle = '#8a7e6a';
+    ctx.beginPath();
+    ctx.arc(sx, d.y, d.size * d.life, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawLandingEffects() {
   const neon = [
     [0,  240, 210],  // ph1 ciano
@@ -4540,6 +4570,7 @@ function loop() {
   drawPlayer();
   // for (const p of particles) p.draw(camX); // removido - bolinhas verdes
   drawSpeedLines(); // Speed lines
+  drawDustParticles();
   // drawLandingEffects(); // removido
   drawPhaseFlash(); // Flash de transição de fase
   if (!gameStarted) { drawStartScreen(); } else { drawHUD(); }
