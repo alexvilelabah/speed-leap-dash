@@ -779,7 +779,7 @@ function updatePhysics() {
       player.onGround = true;
       jumpCount++;
       if (p.type !== 'ground') shakeIntensity = Math.max(shakeIntensity, 3); // Mini shake ao pousar em plataformas
-      landingEffects.push({px: p.x, py: p.y, pw: p.w, ht: p.h, cx: player.x + player.w/2, t: 0, ph: getPhase()});
+      // landingEffects removidos
       sfxJump(); sfxLand();
       break;
     }
@@ -4553,7 +4553,7 @@ function loop() {
   drawPlayer();
   for (const p of particles) p.draw(camX);
   drawSpeedLines(); // Speed lines
-  drawLandingEffects();
+  // drawLandingEffects(); // removido
   drawPhaseFlash(); // Flash de transição de fase
   if (!gameStarted) { drawStartScreen(); } else { drawHUD(); }
 
