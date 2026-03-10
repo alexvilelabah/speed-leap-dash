@@ -55,7 +55,8 @@ document.addEventListener('keydown', e => {
   if (gameFinished) { restartGame(); return; }
   if (!gameStarted) { gameStarted = true; initAudio(); return; }
   keys[e.code] = true; e.preventDefault();
-  // Debug: press 6 to jump to phase 6
+  // Debug: press keys to jump to phases
+  if (e.key === '9' || e.code === 'Digit9') { player.x = 62100; player.y = 380; camX = 62000; }
   if (e.key === '8' || e.code === 'Digit8') { player.x = 52100; player.y = 380; camX = 52000; }
   if (e.key === '7' || e.code === 'Digit7') { player.x = 42100; player.y = 380; camX = 42000; }
   if (e.key === '6' || e.code === 'Digit6') { player.x = 33100; player.y = 380; camX = 33000; }
