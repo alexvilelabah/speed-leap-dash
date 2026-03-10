@@ -772,7 +772,10 @@ function updatePhysics() {
   // Colisão — ÚNICA MUDANÇA: pula automaticamente ao tocar
   player.onGround = false;
   for (const p of platforms) {
-    const inX = player.x + player.w > p.x && player.x < p.x + p.w;
+    // Fase 5: exige pelo menos 40% do corpo sobre a plataforma para não cair
+    const phase5 = getPhase() === 5;
+    const margin = phase5 ? player.w * 0.4 : 0;
+    const inX = player.x + player.w - margin > p.x && player.x + margin < p.x + p.w;
     const wasAbove = (player.y + player.h - player.vy) <= p.y + 4;
     if (inX && wasAbove && player.y + player.h >= p.y && player.y + player.h <= p.y + 20 && player.vy >= 0) {
       player.y = p.y - player.h;
