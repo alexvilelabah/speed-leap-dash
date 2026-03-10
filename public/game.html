@@ -780,7 +780,17 @@ function updatePhysics() {
       player.onGround = true;
       jumpCount++;
       if (p.type !== 'ground') shakeIntensity = Math.max(shakeIntensity, 3); // Mini shake ao pousar em plataformas
-      // landingEffects removidos
+      // Poeira ao pousar
+      for (let i = 0; i < 6; i++) {
+        dustParticles.push({
+          x: player.x + player.w/2 + (Math.random()-0.5)*16,
+          y: player.y + player.h,
+          vx: (Math.random()-0.5)*2.5,
+          vy: -Math.random()*1.8 - 0.5,
+          life: 1,
+          size: Math.random()*3 + 1.5,
+        });
+      }
       sfxJump(); sfxLand();
       break;
     }
