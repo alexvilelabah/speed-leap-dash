@@ -74,6 +74,7 @@ function restartGame() {
   camX = 0; jumpCount = 0; gameFinished = false; landingEffects = [];
   currentPhase = 1; phaseNotifAlpha = 0; flashAlpha = 0;
   shakeIntensity = 0; chromaticAlpha = 0; speedLineParticles = []; trailPositions = [];
+  window._fireworks = [];
   for (const p of platforms) delete p._bx;
   startAmbient(1);
 }
