@@ -4747,6 +4747,44 @@ function ambPhase9(id) {
   ambTimer = setTimeout(() => ambPhase9(id), 1800 + Math.random() * 2500);
 }
 
+function ambPhase10(id) {
+  if (!AC || ambPhaseId !== id) return;
+  // Escala maior luminosa — esperança e reencontro
+  const scale = [261.6, 329.6, 392, 440, 523.3, 587.3, 659.3, 587.3];
+  const freq = scale[(ambPhase10.i||0) % scale.length];
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(ambientGain);
+  if (reverbNode) { const rg = AC.createGain(); rg.gain.value = 0.8; o.connect(rg); rg.connect(reverbNode); }
+  o.type = 'sine'; o.frequency.value = freq;
+  const dur = 1.8;
+  g.gain.setValueAtTime(0, AC.currentTime);
+  g.gain.linearRampToValueAtTime(0.035, AC.currentTime + 0.4);
+  g.gain.linearRampToValueAtTime(0.035, AC.currentTime + dur - 0.5);
+  g.gain.linearRampToValueAtTime(0, AC.currentTime + dur);
+  o.start(); o.stop(AC.currentTime + dur + 0.1);
+  // Harmônico de oitava com delay
+  const o2 = AC.createOscillator(), g2 = AC.createGain();
+  o2.connect(g2); g2.connect(ambientGain);
+  o2.type = 'sine'; o2.frequency.value = freq * 2;
+  g2.gain.setValueAtTime(0, AC.currentTime + 0.2);
+  g2.gain.linearRampToValueAtTime(0.012, AC.currentTime + 0.6);
+  g2.gain.linearRampToValueAtTime(0, AC.currentTime + dur * 0.8);
+  o2.start(AC.currentTime + 0.2); o2.stop(AC.currentTime + dur);
+  // Sub bass suave
+  if ((ambPhase10.i||0) % 4 === 0) {
+    const ob = AC.createOscillator(), gb = AC.createGain();
+    ob.connect(gb); gb.connect(ambientGain);
+    ob.type = 'sine'; ob.frequency.value = freq * 0.25;
+    gb.gain.setValueAtTime(0, AC.currentTime);
+    gb.gain.linearRampToValueAtTime(0.025, AC.currentTime + 0.8);
+    gb.gain.linearRampToValueAtTime(0.025, AC.currentTime + 3.5);
+    gb.gain.linearRampToValueAtTime(0, AC.currentTime + 4.5);
+    ob.start(); ob.stop(AC.currentTime + 4.6);
+  }
+  ambPhase10.i = (ambPhase10.i||0) + 1;
+  ambTimer = setTimeout(() => ambPhase10(id), 1400 + Math.random() * 2000);
+}
+
 // ── TELA DE INÍCIO ────────────────────────────────────────────
 function drawStartScreen() {
   // Overlay escuro
