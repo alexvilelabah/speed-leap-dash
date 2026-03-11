@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "speed-leap-dash",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "C:\\Users\\stree\\Desktop\\jogopulo\\start-dev.bat"],
+      "port": 8080,
+      "autoPort": false
+    }
+  ]
+}
