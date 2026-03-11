@@ -37,9 +37,19 @@
     margin-top: 8px;
     opacity: 0.6;
   }
+  /* ── Mobile scaling ── */
+  @media (pointer: coarse) {
+    #title, #controls { display: none; }
+    #gameCanvas {
+      width: 100vw;
+      height: calc(100vw * 500 / 900);
+      max-height: 100vh;
+      max-width: calc(100vh * 900 / 500);
+    }
+  }
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- Supabase via fetch direto (sem CDN) -->
 <style>
 #game-wrap { position: relative; display: inline-block; }
 #lb-overlay {
@@ -253,7 +263,6 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const W = canvas.width;
 const H = canvas.height;
-
 const keys = {};
 document.addEventListener('keydown', e => {
   if (gameFinished && !isLbOpen()) { restartGame(); return; }
@@ -5192,23 +5201,31 @@ requestAnimationFrame(loop);
 // ═══════════════════════════════════════════════════════════════
 const SB_URL = 'https://axvxrjpiusgfaentcoik.supabase.co';
 const SB_KEY = 'sb_publishable_XIwUjTwB9TdhuZKF6GhabQ_RGoVjnH-';
-let sbClient = null;
-try { sbClient = window.supabase.createClient(SB_URL, SB_KEY); } catch(e) {}
+const SB_HEADERS = {
+  'apikey': SB_KEY,
+  'Authorization': 'Bearer ' + SB_KEY,
+  'Content-Type': 'application/json'
+};
 
 async function sbSubmit(username, jumps) {
-  if (!sbClient) return false;
-  const { error } = await sbClient.from('leaderboard').insert({ username: username.trim(), jumps });
-  return !error;
+  try {
+    const res = await fetch(SB_URL + '/rest/v1/leaderboard', {
+      method: 'POST',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ username: username.trim(), jumps })
+    });
+    return res.ok;
+  } catch(e) { return false; }
 }
 
 async function sbLoadTop10() {
-  if (!sbClient) return [];
-  const { data } = await sbClient
-    .from('leaderboard')
-    .select('username, jumps')
-    .order('jumps', { ascending: true })
-    .limit(10);
-  return data || [];
+  try {
+    const res = await fetch(
+      SB_URL + '/rest/v1/leaderboard?select=username,jumps&order=jumps.asc&limit=10',
+      { headers: SB_HEADERS }
+    );
+    return res.ok ? await res.json() : [];
+  } catch(e) { return []; }
 }
 
 function renderLbTable(rows, myName, myJumps) {
@@ -5295,6 +5312,204 @@ function isLbOpen() {
   const el = document.getElementById('lb-overlay');
   return el && el.style.display !== 'none';
 }
+
+// ── Touch controls (mobile) ─────────────────────────────────────
+(function initTouchControls() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #touch-controls {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0; top: 0;
+      pointer-events: none;
+      z-index: 9999;
+      user-select: none;
+    }
+    @media (pointer: coarse) {
+      #touch-controls { display: block; }
+    }
+    .tc-btn {
+      position: absolute;
+      pointer-events: all;
+      background: rgba(255,255,255,0.12);
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      width: 72px; height: 72px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+      color: rgba(255,255,255,0.7);
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+      transition: background 0.1s;
+    }
+    .tc-btn:active, .tc-btn.pressed { background: rgba(255,255,255,0.32); }
+    #tc-left  { bottom: 24px; left: 24px; }
+    #tc-right { bottom: 24px; right: 24px; }
+
+    /* START overlay */
+    #tc-start-overlay {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10000; pointer-events: all;
+    }
+    #tc-start-btn {
+      background: rgba(10,30,10,0.85);
+      border: 2px solid #7acc20;
+      border-radius: 20px;
+      color: #7acc20;
+      font-family: 'Georgia', serif;
+      font-size: 22px;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      padding: 18px 48px;
+      animation: tc-pulse 1.4s ease-in-out infinite;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    @keyframes tc-pulse {
+      0%,100% { box-shadow: 0 0 24px rgba(122,204,32,0.35); }
+      50%      { box-shadow: 0 0 52px rgba(122,204,32,0.8); }
+    }
+  `;
+  document.head.appendChild(style);
+
+  const html = `
+    <div id="touch-controls">
+      <div class="tc-btn" id="tc-left">◀</div>
+      <div class="tc-btn" id="tc-right">▶</div>
+    </div>
+    <div id="tc-start-overlay">
+      <div id="tc-start-btn">✦ START ✦</div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+
+  // START button — tap to begin
+  const startOverlay = document.getElementById('tc-start-overlay');
+  document.getElementById('tc-start-btn').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (!gameStarted) { gameStarted = true; initAudio(); }
+    startOverlay.style.display = 'none';
+  }, { passive: false });
+  document.addEventListener('keydown', () => {
+    if (gameStarted && startOverlay) startOverlay.style.display = 'none';
+  });
+
+  function bindBtn(id, keyCode) {
+    const el = document.getElementById(id);
+    const down = (e) => { e.preventDefault(); keys[keyCode] = true;  el.classList.add('pressed'); };
+    const up   = (e) => { e.preventDefault(); keys[keyCode] = false; el.classList.remove('pressed'); };
+    el.addEventListener('touchstart',  down, { passive: false });
+    el.addEventListener('touchend',    up,   { passive: false });
+    el.addEventListener('touchcancel', up,   { passive: false });
+  }
+
+  bindBtn('tc-left',  'ArrowLeft');
+  bindBtn('tc-right', 'ArrowRight');
+})();
+
+// ── Menu de configuracoes (mobile) ─────────────────────────────────────────
+(function initSettings() {
+  const styleEl = document.createElement('style');
+  styleEl.textContent = `
+    /* Botao de configuracoes */
+    #tc-settings-btn {
+      position: fixed;
+      top: 14px; left: 14px;
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.45);
+      border: 1.5px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.6);
+      font-size: 20px;
+      display: none;
+      align-items: center; justify-content: center;
+      pointer-events: all;
+      z-index: 9998;
+      -webkit-tap-highlight-color: transparent;
+      cursor: pointer;
+    }
+    @media (pointer: coarse) { #tc-settings-btn { display: flex; } }
+    /* Overlay de configuracoes */
+    #tc-settings-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.88);
+      z-index: 10001;
+      flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 18px;
+      font-family: 'Georgia', serif;
+    }
+    #tc-settings-overlay.open { display: flex; }
+    .tc-set-title {
+      color: #7acc20; font-size: 18px; letter-spacing: 5px;
+      text-transform: uppercase; margin-bottom: 6px;
+    }
+    .tc-set-exit {
+      margin-top: 10px; padding: 12px 36px; border-radius: 12px;
+      border: 1.5px solid rgba(255,80,80,0.5);
+      background: rgba(180,30,30,0.18);
+      color: rgba(255,130,130,0.9);
+      font-family: 'Georgia', serif; font-size: 15px; letter-spacing: 2px;
+      -webkit-tap-highlight-color: transparent; cursor: pointer;
+    }
+    .tc-set-close {
+      margin-top: 4px; padding: 10px 28px; border-radius: 10px;
+      border: 1.5px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.55);
+      font-family: 'Georgia', serif; font-size: 14px;
+      -webkit-tap-highlight-color: transparent; cursor: pointer;
+    }`;
+  document.head.appendChild(styleEl);
+
+  const html = `
+    <div id="tc-settings-btn">&#9881;</div>
+    <div id="tc-settings-overlay">
+      <div class="tc-set-title">&#9881; Configuracoes</div>
+      <div class="tc-set-exit" id="tc-exit-btn">&#x23FB; Sair do jogo</div>
+      <div class="tc-set-close" id="tc-close-settings">&#x2715; Fechar</div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+
+  const overlay = document.getElementById('tc-settings-overlay');
+
+  // 5 toques rapidos no engrenagem = teleporta pro final (debug secreto)
+  let _tapCount = 0, _tapTimer = null, _overlayTimer = null;
+  document.getElementById('tc-settings-btn').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    _tapCount++;
+    clearTimeout(_tapTimer);
+    clearTimeout(_overlayTimer);
+    _tapTimer = setTimeout(() => { _tapCount = 0; }, 600);
+    if (_tapCount >= 5) {
+      _tapCount = 0;
+      if (!gameStarted) { gameStarted = true; initAudio(); }
+      player.x = WORLD_W - 200;
+      player.y = 380;
+      camX = WORLD_W - W;
+      return;
+    }
+    // Abre overlay só se nao vier mais toque em 250ms
+    _overlayTimer = setTimeout(() => {
+      overlay.classList.add('open');
+    }, 250);
+  }, { passive: false });
+
+  document.getElementById('tc-exit-btn').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+      window.Capacitor.Plugins.App.exitApp();
+    } else {
+      window.close();
+    }
+  }, { passive: false });
+
+  document.getElementById('tc-close-settings').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    overlay.classList.remove('open');
+  }, { passive: false });
+})();
 </script>
 </body>
 </html>
