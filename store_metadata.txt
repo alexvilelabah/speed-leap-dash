@@ -1,0 +1,19 @@
+Nome do App:
+Glowjump - Infinite Hopper
+
+Descrição Curta:
+Salte, desvie e chegue ao topo! Jogo viciante com visual incrível e ranking.
+
+Descrição Completa:
+Bem-vindo ao Glowjump, o desafio definitivo de saltos verticais!
+
+O jogo com visual mais bonito e jogabilidade mais viciante. Desvie dos obstáculos rotativos, colete itens pelo caminho, e use mecânicas brilhantes de pulo dinâmico para subir o mais alto que puder!
+
+O jogo oferece:
+- Estilo visual deslumbrante (tema de magia, ruínas e neon).
+- Controles perfeitos de um toque para pular.
+- Dinâmica de colisão e impulso que torna cada pulo um desafio emocionante.
+- Ranking (Leaderboard) global. Mostre que você é o melhor jogador do mundo!
+- Trilha sonora imersiva e responsiva.
+
+Baixe o Glowjump agora e veja o quão alto consegue chegar. A escalada está te esperando!
