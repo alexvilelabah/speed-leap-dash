@@ -1,0 +1,108 @@
+name: Android Release Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version code (e.g., 4, 5, 6)'
+        required: true
+        default: '4'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web
+        run: npm run build
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Sync Capacitor
+        run: npx cap sync
+
+      - name: Update version code
+        run: |
+          sed -i 's/versionCode [0-9]\+/versionCode ${{ github.event.inputs.version }}/g' android/app/build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.$((github.event.inputs.version - 1))\"/g" android/app/build.gradle
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/glowjump-upload.keystore
+
+      - name: Configure signing
+        run: |
+          cat > android/app/build.gradle.signing << 'EOF'
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file('../glowjump-upload.keystore')
+                      storePassword "${{ secrets.KEYSTORE_PASSWORD }}"
+                      keyAlias "${{ secrets.KEY_ALIAS }}"
+                      keyPassword "${{ secrets.KEY_PASSWORD }}"
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                      minifyEnabled true
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                  }
+              }
+          }
+          EOF
+          cat android/app/build.gradle.signing >> android/app/build.gradle
+
+      - name: Build AAB
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease --stacktrace
+
+      - name: Upload AAB as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v1.0.${{ github.event.inputs.version }}
+          release_name: Release v1.0.${{ github.event.inputs.version }}
+          body: |
+            Android App Bundle ready for Play Store upload.
+
+            Version Code: ${{ github.event.inputs.version }}
+            Download: app-release.aab from artifacts
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./android/app/build/outputs/bundle/release/app-release.aab
+          asset_name: app-release-v${{ github.event.inputs.version }}.aab
+          asset_content_type: application/octet-stream
