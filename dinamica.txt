@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vagalume no Escuro</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Georgia', serif;
+  }
+  #title {
+    color: #7acc20;
+    font-size: 13px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    opacity: 0.7;
+  }
+  #gameCanvas {
+    border: 1px solid #2a1a00;
+    cursor: none;
+    display: block;
+    box-shadow: 0 0 60px rgba(120, 220, 0, 0.15);
+  }
+  #controls {
+    color: #3a7010;
+    font-size: 11px;
+    letter-spacing: 3px;
+    margin-top: 8px;
+    opacity: 0.6;
+  }
+</style>
+</head>
+<body>
+<div id="title">✦ Vagalume no Escuro ✦</div>
+<canvas id="gameCanvas" width="900" height="500"></canvas>
+<div id="controls">← → MOVER &nbsp;|&nbsp; SHIFT VOAR RÁPIDO &nbsp;|&nbsp; ELE BATE ASAS SOZINHO!</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
+
+const keys = {};
+document.addEventListener('keydown', e => { keys[e.code] = true; e.preventDefault(); });
+document.addEventListener('keyup',   e => { keys[e.code] = false; });
+
+const WORLD_W = 5000;
+
+// ── PLATAFORMAS ORIGINAIS ─────────────────────────────────────
+const platforms = [
+  // Chão com buracos
+  { x: 0,    y: 430, w: 700,  h: 20, type: 'ground' },
+  { x: 750,  y: 430, w: 400,  h: 20, type: 'ground' },
+  { x: 1200, y: 430, w: 600,  h: 20, type: 'ground' },
+  { x: 1900, y: 430, w: 500,  h: 20, type: 'ground' },
+  { x: 2500, y: 430, w: 800,  h: 20, type: 'ground' },
+  { x: 3400, y: 430, w: 600,  h: 20, type: 'ground' },
+  { x: 4100, y: 430, w: 900,  h: 20, type: 'ground' },
+
+  // Plataformas flutuantes
+  { x: 200,  y: 340, w: 140,  h: 14, type: 'plat' },
+  { x: 400,  y: 270, w: 120,  h: 14, type: 'plat' },
+  { x: 580,  y: 310, w: 100,  h: 14, type: 'plat' },
+  { x: 820,  y: 360, w: 130,  h: 14, type: 'plat' },
+  { x: 1000, y: 290, w: 120,  h: 14, type: 'plat' },
+  { x: 1150, y: 340, w: 100,  h: 14, type: 'plat' },
+  { x: 1320, y: 260, w: 150,  h: 14, type: 'plat' },
+  { x: 1530, y: 320, w: 100,  h: 14, type: 'plat' },
+  { x: 1680, y: 250, w: 120,  h: 14, type: 'plat' },
+  { x: 1960, y: 350, w: 110,  h: 14, type: 'plat' },
+  { x: 2100, y: 280, w: 130,  h: 14, type: 'plat' },
+  { x: 2280, y: 320, w: 100,  h: 14, type: 'plat' },
+  { x: 2600, y: 340, w: 140,  h: 14, type: 'plat' },
+  { x: 2800, y: 270, w: 120,  h: 14, type: 'plat' },
+  { x: 3000, y: 310, w: 100,  h: 14, type: 'plat' },
+  { x: 3200, y: 250, w: 130,  h: 14, type: 'plat' },
+  { x: 3500, y: 350, w: 120,  h: 14, type: 'plat' },
+  { x: 3700, y: 290, w: 110,  h: 14, type: 'plat' },
+  { x: 3900, y: 340, w: 130,  h: 14, type: 'plat' },
+  { x: 4200, y: 300, w: 150,  h: 14, type: 'plat' },
+  { x: 4450, y: 240, w: 120,  h: 14, type: 'plat' },
+  { x: 4680, y: 350, w: 200,  h: 14, type: 'plat' },
+];
+
+// ── DECORAÇÃO ────────────────────────────────────────────────
+const bgDecor = [];
+for (let x = 100; x < WORLD_W; x += 220 + Math.random()*180)
+  bgDecor.push({ x, type: Math.random() > 0.5 ? 'pillar' : 'arch' });
+
+// ── PARTÍCULAS ───────────────────────────────────────────────
+class Particle {
+  constructor(x, y) { this.reset(x, y); }
+  reset(x, y) {
+    this.x = x + (Math.random()-0.5)*4;
+    this.y = y;
+    this.vx = (Math.random()-0.5)*0.6;
+    this.vy = -(0.4 + Math.random()*0.8);
+    this.life = 1;
+    this.decay = 0.018 + Math.random()*0.025;
+    this.size = 1.5 + Math.random()*2;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    this.vy *= 0.98;
+    this.vx += (Math.random()-0.5)*0.15;
+    this.life -= this.decay;
+  }
+  draw(ox) {
+    ctx.save();
+    ctx.globalAlpha = this.life * 0.9;
+    const t = 1 - this.life;
+    const g = ctx.createRadialGradient(this.x-ox, this.y, 0, this.x-ox, this.y, this.size);
+    g.addColorStop(0, `rgb(${Math.floor(200-t*100)},255,${Math.floor(60-t*60)})`);
+    g.addColorStop(1, 'rgba(50,200,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(this.x-ox, this.y, this.size, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ── ESTADO ───────────────────────────────────────────────────
+const player = {
+  x: 80, y: 380,
+  w: 22, h: 44,
+  vx: 0, vy: 0,
+  onGround: false,
+  facing: 1,
+  walkFrame: 0,
+  flickerPhase: 0,
+};
+
+const particles = Array.from({length: 14}, () => new Particle(player.x + player.w/2, player.y + player.h - 8));
+let camX = 0;
+let flashAlpha = 0;
+
+// ── FÍSICA ───────────────────────────────────────────────────
+function updatePhysics() {
+  const speed = (keys['ShiftLeft'] || keys['ShiftRight']) ? 5.5 : 3.0;
+  let moving = false;
+
+  if (keys['ArrowLeft'] || keys['KeyA']) {
+    player.vx = -speed; player.facing = -1; moving = true;
+  } else if (keys['ArrowRight'] || keys['KeyD']) {
+    player.vx = speed;  player.facing =  1; moving = true;
+  } else {
+    player.vx *= 0.75;
+  }
+
+  if (moving && player.onGround) player.walkFrame++;
+
+  player.vy += 0.55;
+  if (player.vy > 18) player.vy = 18;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  if (player.x < 0) player.x = 0;
+  if (player.x > WORLD_W - player.w) player.x = WORLD_W - player.w;
+
+  // Colisão — ÚNICA MUDANÇA: pula automaticamente ao tocar
+  player.onGround = false;
+  for (const p of platforms) {
+    const inX = player.x + player.w > p.x && player.x < p.x + p.w;
+    const wasAbove = (player.y + player.h - player.vy) <= p.y + 4;
+    if (inX && wasAbove && player.y + player.h >= p.y && player.y + player.h <= p.y + 20 && player.vy >= 0) {
+      player.y = p.y - player.h;
+      player.vy = -12.5;   // ← auto-pulo
+      player.onGround = true;
+      break;
+    }
+    // Bate no teto
+    if (inX && player.y < p.y + p.h && player.y > p.y - 10 && player.vy < 0) {
+      player.vy = 0; player.y = p.y + p.h;
+    }
+  }
+
+  // Caiu no buraco → reseta
+  if (player.y > H + 100) {
+    flashAlpha = 0.9;
+    player.x = 80; player.y = 380; player.vx = 0; player.vy = 0;
+  }
+}
+
+function updateCamera() {
+  const target = player.x - W/2 + player.w/2;
+  camX += (target - camX) * 0.1;
+  if (camX < 0) camX = 0;
+  if (camX > WORLD_W - W) camX = WORLD_W - W;
+}
+
+function updateParticles() {
+  const cx = player.x + player.w/2;
+  const cy = player.y + player.h - 8;
+  for (const p of particles) {
+    p.update();
+    if (p.life <= 0) p.reset(cx, cy);
+  }
+}
+
+// ── DESENHO ──────────────────────────────────────────────────
+function drawBG() {
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  for (const d of bgDecor) {
+    const sx = d.x - camX * 0.4;
+    if (sx < -100 || sx > W+100) continue;
+    ctx.fillStyle = '#060402';
+    if (d.type === 'pillar') {
+      ctx.fillRect(sx, 150, 20, 280); ctx.fillRect(sx-8, 148, 36, 10); ctx.fillRect(sx-4, 138, 28, 12);
+    } else {
+      ctx.beginPath(); ctx.arc(sx+30, 300, 30, Math.PI, 0);
+      ctx.lineTo(sx+60, 430); ctx.lineTo(sx, 430); ctx.closePath(); ctx.fill();
+    }
+  }
+}
+
+function drawPlatforms() {
+  for (const p of platforms) {
+    const sx = p.x - camX;
+    if (sx > W+50 || sx+p.w < -50) continue;
+    if (p.type === 'ground') {
+      const g = ctx.createLinearGradient(sx, p.y, sx, p.y+p.h);
+      g.addColorStop(0, '#2a1e10'); g.addColorStop(1, '#0f0a05');
+      ctx.fillStyle = g; ctx.fillRect(sx, p.y, p.w, p.h);
+      ctx.strokeStyle = '#3d2c14'; ctx.lineWidth = 1; ctx.strokeRect(sx, p.y, p.w, p.h);
+      ctx.fillStyle = '#1a1208';
+      for (let i = 0; i < p.w; i += 40) {
+        ctx.fillRect(sx+i, p.y+4, 35, 3); ctx.fillRect(sx+i+20, p.y+10, 30, 3);
+      }
+    } else {
+      const g = ctx.createLinearGradient(sx, p.y, sx, p.y+p.h);
+      g.addColorStop(0, '#3d2810'); g.addColorStop(1, '#1a0e05');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(sx, p.y, p.w, p.h, 3); ctx.fill();
+      ctx.strokeStyle = '#5a3d1a'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#0a1205'; ctx.fillRect(sx+4, p.y, p.w-8, 3);
+    }
+  }
+}
+
+function drawPlayer() {
+  const px = player.x - camX;
+  const py = player.y;
+  const f  = player.facing;
+  player.wingFrame = (player.wingFrame || 0) + 1;
+  const wA = Math.sin(player.wingFrame * 0.38) * 0.55;
+  const gInt = 0.7 + Math.sin(player.flickerPhase * 0.9) * 0.3;
+
+  ctx.save();
+  ctx.translate(px + player.w/2, py + player.h);
+  ctx.scale(f, 1);
+
+  // Asas traseiras
+  ctx.save(); ctx.rotate(wA * 0.5);
+  ctx.fillStyle = 'rgba(130,210,70,0.16)'; ctx.strokeStyle = 'rgba(70,170,30,0.32)'; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.ellipse(8, -19, 11, 4, 0.5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  ctx.save(); ctx.rotate(-wA * 0.5);
+  ctx.fillStyle = 'rgba(130,210,70,0.16)'; ctx.strokeStyle = 'rgba(70,170,30,0.32)'; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.ellipse(-8, -19, 11, 4, -0.5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  // Asas dianteiras
+  ctx.save(); ctx.rotate(-wA);
+  ctx.fillStyle = 'rgba(170,245,110,0.22)'; ctx.strokeStyle = 'rgba(90,190,40,0.42)'; ctx.lineWidth = 0.9;
+  ctx.beginPath(); ctx.ellipse(7, -28, 13, 5, -0.25, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  ctx.save(); ctx.rotate(wA);
+  ctx.fillStyle = 'rgba(170,245,110,0.22)'; ctx.strokeStyle = 'rgba(90,190,40,0.42)'; ctx.lineWidth = 0.9;
+  ctx.beginPath(); ctx.ellipse(-7, -28, 13, 5, 0.25, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  // Pernas (3 pares)
+  ctx.strokeStyle = '#1a2e04'; ctx.lineWidth = 1.1;
+  ctx.beginPath(); ctx.moveTo(4,-24); ctx.lineTo(13,-19); ctx.lineTo(16,-23); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-4,-24); ctx.lineTo(-13,-19); ctx.lineTo(-16,-23); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(4,-20); ctx.lineTo(14,-17); ctx.lineTo(17,-21); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-4,-20); ctx.lineTo(-14,-17); ctx.lineTo(-17,-21); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(4,-15); ctx.lineTo(12,-10); ctx.lineTo(14,-14); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-4,-15); ctx.lineTo(-12,-10); ctx.lineTo(-14,-14); ctx.stroke();
+
+  // Abdômen brilhante
+  const abdG = ctx.createRadialGradient(0,-8,0, 0,-8,9);
+  abdG.addColorStop(0, `rgba(230,255,80,${gInt})`);
+  abdG.addColorStop(0.55, `rgba(140,220,20,${gInt*0.75})`);
+  abdG.addColorStop(1, 'rgba(60,160,0,0)');
+  ctx.fillStyle = abdG;
+  ctx.beginPath(); ctx.ellipse(0,-8,6,9,0,0,Math.PI*2); ctx.fill();
+  // Segmentos
+  ctx.strokeStyle = `rgba(50,110,0,0.55)`; ctx.lineWidth = 0.7;
+  ctx.beginPath(); ctx.moveTo(-5,-6); ctx.lineTo(5,-6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-5,-10); ctx.lineTo(5,-10); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-5,-14); ctx.lineTo(5,-14); ctx.stroke();
+
+  // Tórax
+  ctx.fillStyle = '#1b2e06';
+  ctx.beginPath(); ctx.ellipse(0,-22,5,8,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#2a4408'; ctx.lineWidth = 0.8; ctx.stroke();
+
+  // Cabeça
+  ctx.fillStyle = '#101e03';
+  ctx.beginPath(); ctx.arc(0,-33,5,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#1e3006'; ctx.lineWidth = 0.8; ctx.stroke();
+
+  // Olhos compostos
+  ctx.fillStyle = '#aaee00';
+  ctx.beginPath(); ctx.arc(-2,-34,2,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(2,-34,2,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.beginPath(); ctx.arc(-2,-34,1,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(2,-34,1,0,Math.PI*2); ctx.fill();
+
+  // Antenas
+  ctx.strokeStyle = '#2c4a08'; ctx.lineWidth = 1.1;
+  ctx.beginPath(); ctx.moveTo(-2,-37); ctx.quadraticCurveTo(-7,-44,-4,-48); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(2,-37); ctx.quadraticCurveTo(7,-44,4,-48); ctx.stroke();
+  ctx.fillStyle = '#507015';
+  ctx.beginPath(); ctx.arc(-4,-48,1.5,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(4,-48,1.5,0,Math.PI*2); ctx.fill();
+
+  // Brilho local no abdômen
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  const ag = ctx.createRadialGradient(0,-8,0, 0,-8,16);
+  ag.addColorStop(0, `rgba(190,255,40,${gInt*0.55})`);
+  ag.addColorStop(1, 'rgba(80,200,0,0)');
+  ctx.fillStyle = ag;
+  ctx.beginPath(); ctx.arc(0,-8,16,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+}
+
+function drawLight() {
+  player.flickerPhase += 0.13 + Math.random()*0.06;
+  const fl = 1 + Math.sin(player.flickerPhase)*0.09 + Math.random()*0.04;
+  const R  = 310 * fl;
+  const cx = player.x - camX + player.w/2;
+  const cy = player.y + player.h - 8;
+
+  ctx.save(); ctx.globalCompositeOperation = 'screen';
+  const inner = ctx.createRadialGradient(cx, cy, 0, cx, cy, R*0.5);
+  inner.addColorStop(0, 'rgba(210,255,80,0.52)'); inner.addColorStop(0.4, 'rgba(100,220,20,0.26)'); inner.addColorStop(1, 'rgba(40,180,0,0)');
+  ctx.fillStyle = inner; ctx.fillRect(0,0,W,H);
+  const mid = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+  mid.addColorStop(0, 'rgba(80,200,10,0.18)'); mid.addColorStop(0.5, 'rgba(40,150,5,0.08)'); mid.addColorStop(1, 'rgba(10,100,0,0)');
+  ctx.fillStyle = mid; ctx.fillRect(0,0,W,H); ctx.restore();
+
+  const dark = ctx.createRadialGradient(cx, cy, R*0.3, cx, cy, R*1.3);
+  dark.addColorStop(0, 'rgba(0,0,0,0)'); dark.addColorStop(0.4, 'rgba(0,0,0,0.5)');
+  dark.addColorStop(0.78, 'rgba(0,0,0,0.93)'); dark.addColorStop(1, 'rgba(0,0,0,0.995)');
+  ctx.fillStyle = dark; ctx.fillRect(0,0,W,H);
+}
+
+function drawHUD() {
+  // Flash de morte
+  if (flashAlpha > 0) {
+    ctx.save(); ctx.globalAlpha = flashAlpha; ctx.fillStyle = '#6b0000'; ctx.fillRect(0,0,W,H); ctx.restore();
+    flashAlpha = Math.max(0, flashAlpha - 0.04);
+  }
+
+  // Progresso
+  ctx.save();
+  ctx.fillStyle = 'rgba(140,220,20,0.5)'; ctx.font = '11px Georgia'; ctx.letterSpacing = '3px';
+  const pct = Math.floor((player.x / WORLD_W) * 100);
+  ctx.fillText(`✦ PROGRESSO: ${pct}%`, 18, 24);
+  if (pct >= 99) {
+    ctx.fillStyle = 'rgba(180,255,80,0.9)'; ctx.font = 'bold 22px Georgia';
+    ctx.fillText('✦ FIM DA JORNADA ✦', W/2 - 110, H/2);
+  }
+  ctx.restore();
+}
+
+// ── LOOP ─────────────────────────────────────────────────────
+function loop() {
+  updatePhysics(); updateParticles(); updateCamera();
+  drawBG(); drawPlatforms(); drawPlayer();
+  for (const p of particles) p.draw(camX);
+  drawLight(); drawHUD();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
