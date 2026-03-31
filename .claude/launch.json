@@ -2,11 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "speed-leap-dash",
+      "name": "jogopulo",
       "runtimeExecutable": "cmd",
-      "runtimeArgs": ["/c", "C:\\Users\\stree\\Desktop\\jogopulo\\start-dev.bat"],
-      "port": 8080,
-      "autoPort": false
+      "runtimeArgs": ["/c", "npx vite --port 5173"],
+      "port": 5173
     }
   ]
 }
