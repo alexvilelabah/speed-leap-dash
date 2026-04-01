@@ -38,43 +38,47 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync
 
-      - name: Update version code
+      - name: Update version code and name
         run: |
-          sed -i 's/versionCode [0-9]\+/versionCode ${{ github.event.inputs.version }}/g' android/app/build.gradle
-          sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.$((github.event.inputs.version - 1))\"/g" android/app/build.gradle
+          VERSION_CODE=${{ github.event.inputs.version }}
+          VERSION_NAME="1.0.$((VERSION_CODE - 1))"
+          sed -i "s/versionCode [0-9]\+/versionCode $VERSION_CODE/g" android/app/build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"$VERSION_NAME\"/g" android/app/build.gradle
 
       - name: Decode keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/glowjump-upload.keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/glowjump-upload.keystore
 
-      - name: Configure signing
+      - name: Configure signing in build.gradle
         run: |
-          cat > android/app/build.gradle.signing << 'EOF'
-          android {
-              signingConfigs {
-                  release {
-                      storeFile file('../glowjump-upload.keystore')
-                      storePassword "${{ secrets.KEYSTORE_PASSWORD }}"
-                      keyAlias "${{ secrets.KEY_ALIAS }}"
-                      keyPassword "${{ secrets.KEY_PASSWORD }}"
-                  }
-              }
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.release
-                      minifyEnabled true
-                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-                  }
-              }
-          }
-          EOF
-          cat android/app/build.gradle.signing >> android/app/build.gradle
+          # Insert signingConfigs block inside the android {} block
+          sed -i '/android {/a\
+              signingConfigs {\
+                  release {\
+                      storeFile file("../glowjump-upload.keystore")\
+                      storePassword System.getenv("KEYSTORE_PASSWORD")\
+                      keyAlias System.getenv("KEY_ALIAS")\
+                      keyPassword System.getenv("KEY_PASSWORD")\
+                  }\
+              }' android/app/build.gradle
+
+          # Update release buildType to use signing config and enable minification
+          sed -i 's/minifyEnabled false/minifyEnabled true/' android/app/build.gradle
+          sed -i '/minifyEnabled true/a\
+                      signingConfig signingConfigs.release' android/app/build.gradle
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Build AAB
         run: |
           cd android
           chmod +x gradlew
           ./gradlew bundleRelease --stacktrace
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Upload AAB as artifact
         uses: actions/upload-artifact@v4
@@ -83,6 +87,7 @@ jobs:
           path: android/app/build/outputs/bundle/release/app-release.aab
 
       - name: Create Release
+        id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
