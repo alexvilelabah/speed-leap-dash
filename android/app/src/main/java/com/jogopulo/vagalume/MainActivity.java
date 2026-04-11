@@ -1,5 +1,6 @@
 package com.jogopulo.vagalume;
 
+import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -11,13 +12,34 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        registerPlugin(AdMobPlugin.class);
         super.onCreate(savedInstanceState);
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) hideSystemUI();
+        if (hasFocus) {
+            hideSystemUI();
+            // Retomar áudio quando volta ao app
+            setVolume(AudioManager.STREAM_MUSIC, true);
+            getBridge().getWebView().evaluateJavascript("if(typeof window.resumeGame === 'function') window.resumeGame();", null);
+        } else {
+            // Pausar áudio quando sai do app
+            setVolume(AudioManager.STREAM_MUSIC, false);
+            getBridge().getWebView().evaluateJavascript("if(typeof window.pauseGame === 'function') window.pauseGame();", null);
+        }
+    }
+
+    private void setVolume(int streamType, boolean enabled) {
+        AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        if (audioManager != null) {
+            if (enabled) {
+                audioManager.setStreamVolume(streamType, audioManager.getStreamMaxVolume(streamType), 0);
+            } else {
+                audioManager.setStreamVolume(streamType, 0, 0);
+            }
+        }
     }
 
     private void hideSystemUI() {

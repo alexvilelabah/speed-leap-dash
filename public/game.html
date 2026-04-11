@@ -4,6 +4,85 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Glowjump</title>
+<!-- AdMob Native Plugin Bridge -->
+<script>
+  let adMobReady = false;
+  let bannerVisible = false;
+
+  // Inicializar AdMob (plugin nativo - já inicializa no load() do Java)
+  async function initAdMob() {
+    try {
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
+        console.log('AdMob plugin nativo disponível!');
+        adMobReady = true;
+        // Mostrar banner após 2 segundos
+        setTimeout(showBannerAd, 2000);
+      } else {
+        console.log('AdMob não disponível (modo web/navegador)');
+      }
+    } catch (error) {
+      console.log('Erro ao inicializar AdMob:', error);
+    }
+  }
+
+  // Mostrar banner
+  window.showBannerAd = async function() {
+    if (!adMobReady || bannerVisible) return;
+    try {
+      const { AdMob } = window.Capacitor.Plugins;
+      await AdMob.showBannerAd();
+      bannerVisible = true;
+      console.log('✓ Banner exibido');
+    } catch (error) {
+      console.log('Erro ao mostrar banner:', error);
+    }
+  };
+
+  // Esconder banner
+  window.hideBannerAd = async function() {
+    if (!adMobReady || !bannerVisible) return;
+    try {
+      const { AdMob } = window.Capacitor.Plugins;
+      await AdMob.hideBannerAd();
+      bannerVisible = false;
+      console.log('✓ Banner escondido');
+    } catch (error) {
+      console.log('Erro ao esconder banner:', error);
+    }
+  };
+
+  // Toggle por fase
+  window.toggleBannerByPhase = async function(phase) {
+    if (phase % 2 === 0) {
+      window.showBannerAd();
+    } else {
+      window.hideBannerAd();
+    }
+  };
+
+  // Pausar jogo quando app perde foco
+  window.pauseGame = function() {
+    if (typeof window.gameState !== 'undefined' && window.gameState.isPlaying) {
+      window.gameState.isPaused = true;
+      console.log('Jogo pausado (app perdeu foco)');
+    }
+  };
+
+  // Retomar jogo quando app ganha foco
+  window.resumeGame = function() {
+    if (typeof window.gameState !== 'undefined' && window.gameState.isPaused) {
+      window.gameState.isPaused = false;
+      console.log('Jogo retomado (app voltou ao foco)');
+    }
+  };
+
+  // Iniciar quando documento carregar
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAdMob);
+  } else {
+    initAdMob();
+  }
+</script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -319,7 +398,7 @@
   </div>
 </div>
 </div>
-<div id="controls">← → MOVER &nbsp;|&nbsp; SHIFT VOAR RÁPIDO &nbsp;|&nbsp; ELE BATE ASAS SOZINHO!</div>
+<div id="controls">← → MOVER &nbsp;|&nbsp; ELE BATE ASAS SOZINHO!</div>
 
 <script>
 // ── FORÇAR LANDSCAPE ────────────────────────────────────────────
@@ -1086,6 +1165,33 @@ let gameFinished = false;
 let landingEffects = [];
 let dustParticles = [];
 
+// ── SISTEMA DE SAVE/LOAD ──────────────────────────────────────
+function saveGame() {
+  const save = {
+    playerX: player.x,
+    jumpCount: jumpCount,
+    timestamp: new Date().toISOString()
+  };
+  localStorage.setItem('glowjumpSave', JSON.stringify(save));
+}
+
+function loadGame() {
+  const save = localStorage.getItem('glowjumpSave');
+  if (save) {
+    const data = JSON.parse(save);
+    return { playerX: data.playerX, jumpCount: data.jumpCount };
+  }
+  return null;
+}
+
+function hasSave() {
+  return localStorage.getItem('glowjumpSave') !== null;
+}
+
+function deleteSave() {
+  localStorage.removeItem('glowjumpSave');
+}
+
 // ── NOVOS EFEITOS VISUAIS ────────────────────────────────────
 let shakeX = 0, shakeY = 0, shakeIntensity = 0;
 let chromaticAlpha = 0;
@@ -1108,7 +1214,7 @@ function getPhase() {
 
 // ── FÍSICA ───────────────────────────────────────────────────
 function updatePhysics() {
-  const speed = (keys['ShiftLeft'] || keys['ShiftRight']) ? 5.5 : 3.0;
+  const speed = 3.0;
   let moving = false;
 
   if (keys['ArrowLeft'] || keys['KeyA']) {
@@ -4254,6 +4360,8 @@ function drawHUD() {
       gameFinished = true;
       const best = parseInt(localStorage.getItem('vgBest') || '999999');
       if (jumpCount < best) localStorage.setItem('vgBest', jumpCount);
+      deleteSave(); // Limpa save quando completa o jogo
+
       setTimeout(() => showLeaderboardOverlay(jumpCount), 1200);
       stopAmbient();
       sfxFinish();
@@ -5930,7 +6038,7 @@ function drawStartScreen() {
   ctx.fillStyle = 'rgba(0,150,130,0.50)';
   ctx.font = '11px Georgia';
   ctx.letterSpacing = '2px';
-  ctx.fillText('← → MOVER  ·  SHIFT VOAR RÁPIDO  ·  ELE BATE ASAS SOZINHO!', W/2, H/2 + 36);
+  ctx.fillText('← → MOVER  ·  ELE BATE ASAS SOZINHO!', W/2, H/2 + 36);
 
   ctx.textAlign = 'left';
   ctx.restore();
@@ -5964,19 +6072,20 @@ function drawChromaticAberration() {
 }
 
 function updateSpeedLines() {
-  const isShift = keys['ShiftLeft'] || keys['ShiftRight'];
-  const isMoving = keys['ArrowLeft'] || keys['ArrowRight'] || keys['KeyA'] || keys['KeyD'];
-  if (isShift && isMoving && gameStarted && !gameFinished) {
-    for (let i = 0; i < 2; i++) {
-      speedLineParticles.push({
-        x: player.x + (Math.random() - 0.5) * 60,
-        y: player.y - 20 + Math.random() * 80,
-        vx: -player.facing * (8 + Math.random() * 12),
-        life: 1,
-        len: 20 + Math.random() * 40
-      });
-    }
-  }
+  // Speed lines desativadas - voo rápido removido
+  // const isShift = keys['ShiftLeft'] || keys['ShiftRight'];
+  // const isMoving = keys['ArrowLeft'] || keys['ArrowRight'] || keys['KeyA'] || keys['KeyD'];
+  // if (isShift && isMoving && gameStarted && !gameFinished) {
+  //   for (let i = 0; i < 2; i++) {
+  //     speedLineParticles.push({
+  //       x: player.x + (Math.random() - 0.5) * 60,
+  //       y: player.y - 20 + Math.random() * 80,
+  //       vx: -player.facing * (8 + Math.random() * 12),
+  //       life: 1,
+  //       len: 20 + Math.random() * 40
+  //     });
+  //   }
+  // }
   for (let i = speedLineParticles.length - 1; i >= 0; i--) {
     const sl = speedLineParticles[i];
     sl.x += sl.vx;
@@ -6269,6 +6378,36 @@ function isLbOpen() {
       0%,100% { box-shadow: 0 0 24px rgba(122,204,32,0.35); }
       50%      { box-shadow: 0 0 52px rgba(122,204,32,0.8); }
     }
+    #tc-start-menu {
+      display: flex; flex-direction: column; gap: 16px; align-items: center;
+    }
+    #tc-menu-label {
+      color: rgba(122,204,32,0.7);
+      font-family: 'Georgia', serif;
+      font-size: 14px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .tc-menu-btn {
+      background: rgba(10,30,10,0.85);
+      border: 2px solid #7acc20;
+      border-radius: 16px;
+      color: #7acc20;
+      font-family: 'Georgia', serif;
+      font-size: 16px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      padding: 14px 40px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: all 0.2s;
+    }
+    .tc-menu-btn:active {
+      transform: scale(0.95);
+      box-shadow: 0 0 20px rgba(122,204,32,0.6) inset;
+    }
   `;
   document.head.appendChild(style);
 
@@ -6278,19 +6417,72 @@ function isLbOpen() {
       <div class="tc-btn" id="tc-right">▶</div>
     </div>
     <div id="tc-start-overlay">
-      <div id="tc-start-btn">✦ START ✦</div>
+      <div id="tc-start-menu">
+        <div id="tc-menu-label">Escolha uma opção</div>
+        <button class="tc-menu-btn" id="tc-new-game">✦ Novo Jogo ✦</button>
+        <button class="tc-menu-btn" id="tc-continue-btn" style="display:none;">✦ Continuar ✦</button>
+        <button class="tc-menu-btn" id="tc-delete-save" style="display:none; font-size:12px;">✗ Apagar Save</button>
+      </div>
     </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
 
-  // START button — tap to begin
+  // Menu de opções
   const startOverlay = document.getElementById('tc-start-overlay');
-  document.getElementById('tc-start-btn').addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    if (!gameStarted) { gameStarted = true; initAudio(); }
+  const continueBtn = document.getElementById('tc-continue-btn');
+  const deleteBtn = document.getElementById('tc-delete-save');
+
+  // Mostrar/ocultar botão de continuar se houver save
+  function updateMenuVisibility() {
+    if (hasSave()) {
+      continueBtn.style.display = 'block';
+      deleteBtn.style.display = 'block';
+    } else {
+      continueBtn.style.display = 'none';
+      deleteBtn.style.display = 'none';
+    }
+  }
+  updateMenuVisibility();
+
+  // Novo Jogo
+  const newGameHandler = (e) => {
+    e?.preventDefault?.();
+    deleteSave();
+    gameStarted = true;
+    initAudio();
     startOverlay.style.display = 'none';
-  }, { passive: false });
-  document.addEventListener('keydown', () => {
-    if (gameStarted && startOverlay) startOverlay.style.display = 'none';
+  };
+  document.getElementById('tc-new-game').addEventListener('touchstart', newGameHandler, { passive: false });
+  document.getElementById('tc-new-game').addEventListener('click', newGameHandler);
+
+  // Continuar
+  const continueHandler = (e) => {
+    e?.preventDefault?.();
+    const save = loadGame();
+    if (save) {
+      player.x = save.playerX;
+      jumpCount = save.jumpCount;
+      gameStarted = true;
+      initAudio();
+      startOverlay.style.display = 'none';
+    }
+  };
+  continueBtn.addEventListener('touchstart', continueHandler, { passive: false });
+  continueBtn.addEventListener('click', continueHandler);
+
+  // Apagar Save
+  const deleteSaveHandler = (e) => {
+    e?.preventDefault?.();
+    deleteSave();
+    updateMenuVisibility();
+  };
+  deleteBtn.addEventListener('touchstart', deleteSaveHandler, { passive: false });
+  deleteBtn.addEventListener('click', deleteSaveHandler);
+
+  // Suporte a teclas
+  document.addEventListener('keydown', (e) => {
+    if (!gameStarted && e.key === ' ') {
+      newGameHandler();
+    }
   });
 
   function bindBtn(id, keyCode) {
@@ -6396,12 +6588,16 @@ function isLbOpen() {
   }, { passive: false });
 
   const exitApp = (e) => {
-    e.preventDefault();
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-      window.Capacitor.Plugins.App.exitApp();
-    } else {
-      window.close();
+    if (e && e.preventDefault && e.cancelable) {
+      e.preventDefault();
     }
+    // Salva antes de sair
+    if (gameStarted && !gameFinished) {
+      saveGame();
+    }
+    // Fecha o overlay de configurações
+    overlay.classList.remove('open');
+    alert('Jogo salvo! Use o botão voltar do Android para sair.');
   };
 
   document.getElementById('tc-exit-btn').addEventListener('touchstart', exitApp, { passive: false });
