@@ -7,7 +7,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.13.0'
+        classpath 'com.android.tools.build:gradle:9.1.0'
         classpath 'com.google.gms:google-services:4.4.4'
 
         // NOTE: Do not place your application dependencies here; they belong
@@ -21,6 +21,29 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+    }
+
+    // Fix Java compatibility and ProGuard configuration
+    afterEvaluate {
+        def android_plugin = null
+        try {
+            android_plugin = extensions.findByType(com.android.build.gradle.BaseExtension)
+        } catch (Exception e) {
+            // Not an Android module
+        }
+
+        if (android_plugin != null) {
+            // Fix Java version compatibility (use Java 17 instead of Java 21)
+            android_plugin.compileOptions.sourceCompatibility JavaVersion.VERSION_17
+            android_plugin.compileOptions.targetCompatibility JavaVersion.VERSION_17
+
+            // Fix ProGuard compatibility for AdMob and other libraries
+            android_plugin.buildTypes.all { buildType ->
+                if (buildType.name == 'release') {
+                    buildType.proguardFiles = [android_plugin.getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro']
+                }
+            }
+        }
     }
 }
 
