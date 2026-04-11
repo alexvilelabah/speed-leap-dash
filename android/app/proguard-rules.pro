@@ -5,17 +5,29 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Google Mobile Ads SDK
+-keep class com.google.android.gms.ads.** { *; }
+-keep class com.google.android.gms.common.GooglePlayServicesUtil { *; }
+-keep class com.google.android.gms.common.GooglePlayServicesRepairableException { *; }
+-keep class com.google.android.gms.common.GooglePlayServicesNotAvailableException { *; }
+-keep interface com.google.android.gms.ads.** { *; }
+-keepattributes *Annotation*,EnclosingMethod
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# AdMob custom plugin
+-keep class com.jogopulo.vagalume.AdMobPlugin { *; }
+-keep class com.jogopulo.vagalume.MainActivity { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Capacitor
+-keep class com.getcapacitor.** { *; }
+-keep interface com.getcapacitor.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
+
+# WebView
+-keepclassmembers class fqcn.of.javascript.interface.for.webview {
+   public *;
+}
+
+# Preserve line numbers for debugging
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
